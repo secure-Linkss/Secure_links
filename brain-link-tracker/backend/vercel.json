@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "src/main.py": {
+      "runtime": "python3.9"
+    }
+  }
+}
+

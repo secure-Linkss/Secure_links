@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from src.models.user import db, TrackingEvent, Link
+from src.models.fixed_user import db, TrackingEvent, Link
 from src.utils.auth import login_required
 from sqlalchemy import desc, and_, func
 from datetime import datetime, timedelta

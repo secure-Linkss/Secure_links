@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from src.models.user import db, Link
+from src.models.fixed_user import db, Link
 from src.utils.auth import login_required
 from src.utils.security import generate_short_code
 

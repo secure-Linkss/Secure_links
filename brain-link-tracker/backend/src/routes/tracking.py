@@ -1,5 +1,5 @@
 from flask import Blueprint, request, redirect, jsonify, render_template_string
-from src.models.user import db, Link, TrackingEvent
+from src.models.fixed_user import db, Link, TrackingEvent
 from src.utils.security import (
     is_bot, get_geolocation, is_country_allowed, is_city_allowed,
     parse_user_agent_details, get_client_ip, is_suspicious_request
