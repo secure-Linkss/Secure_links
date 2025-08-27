@@ -61,7 +61,7 @@ def get_dashboard_analytics():
         total_clicks = len(events)
         real_visitors = len(set(event.ip_address for event in events))
         captured_emails = len([e for e in events if e.captured_email])
-        active_links = len([link for link in user_links if link.is_active])
+        active_links = len([link for link in user_links if link.status == 'active'])
         conversion_rate = (captured_emails / total_clicks * 100) if total_clicks > 0 else 0
         avg_clicks_per_link = total_clicks / total_links if total_links > 0 else 0
         
@@ -111,9 +111,9 @@ def get_dashboard_analytics():
             
             campaigns.append({
                 'id': f'camp_{link.id:03d}',
-                'name': link.title or f'Campaign {link.short_code}',
+                'name': link.campaign_name or f'Campaign {link.short_code}',
                 'trackingId': link.short_code,
-                'status': 'active' if link.is_active else 'paused',
+                'status': 'active' if link.status == 'active' else 'paused',
                 'clicks': link_clicks,
                 'visitors': link_visitors,
                 'emails': link_emails,
@@ -132,7 +132,7 @@ def get_dashboard_analytics():
             link = next((l for l in user_links if l.id == event.link_id), None)
             emails.append({
                 'email': event.captured_email,
-                'campaign': link.title if link else 'Unknown Campaign',
+                'campaign': link.campaign_name if link else 'Unknown Campaign',
                 'trackingId': link.short_code if link else 'Unknown',
                 'country': event.country or 'Unknown',
                 'captured': event.timestamp.isoformat() if event.timestamp else None
@@ -339,7 +339,7 @@ def get_analytics_overview():
         total_clicks = len(events)
         real_visitors = len(set(event.ip_address for event in events if event.ip_address))
         captured_emails = len([e for e in events if e.captured_email])
-        active_links = len([link for link in user_links if link.is_active])
+        active_links = len([link for link in user_links if link.status == 'active'])
         
         # Get unique campaigns
         campaigns = set()
