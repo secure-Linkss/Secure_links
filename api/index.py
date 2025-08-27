@@ -15,6 +15,7 @@ from src.routes.track import track_bp
 from src.routes.events import events_bp
 from src.routes.analytics import analytics_bp
 from src.routes.campaigns import campaigns_bp
+from src.routes.settings import settings_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), '..', 'src', 'static'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'ej5B3Amppi4gjpbC65te6rJuvJzgVCWW_xfB-ZLR1TE')
@@ -28,6 +29,7 @@ app.register_blueprint(auth_bp, url_prefix='/api')
 app.register_blueprint(links_bp, url_prefix='/api')
 app.register_blueprint(analytics_bp, url_prefix='/api')
 app.register_blueprint(campaigns_bp, url_prefix='/api')
+app.register_blueprint(settings_bp)
 app.register_blueprint(track_bp)
 app.register_blueprint(events_bp)
 
