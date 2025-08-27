@@ -580,7 +580,7 @@ const Dashboard = () => {
                   dataKey="value"
                 >
                   {deviceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={`cell-${index}`} fill={["#8884d8", "#82ca9d", "#ffc658", "#ff7300"][index % 4]} />
                   ))}
                 </Pie>
                 <Tooltip 
