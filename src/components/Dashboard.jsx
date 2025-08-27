@@ -55,46 +55,28 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Fetch analytics data
-        const analyticsResponse = await fetch('/api/analytics/overview');
-        if (analyticsResponse.ok) {
-          const analyticsData = await analyticsResponse.json();
-          setAnalytics(analyticsData);
-        }
+        // Fetch all dashboard data from the working endpoint
+        const dashboardResponse = await fetch(`/api/analytics/dashboard?period=${timeFilter}`);
+        if (dashboardResponse.ok) {
+          const dashboardData = await dashboardResponse.json();
+          
+          // Update analytics state with correct data
+          setAnalytics({
+            totalLinks: dashboardData.stats?.totalLinks || 0,
+            totalClicks: dashboardData.stats?.totalClicks || 0,
+            realVisitors: dashboardData.stats?.realVisitors || 0,
+            capturedEmails: dashboardData.stats?.capturedEmails || 0,
+            activeLinks: dashboardData.analytics?.activeLinks || 0,
+            conversionRate: dashboardData.analytics?.conversionRate || 0,
+            avgClicksPerLink: dashboardData.analytics?.avgClicksPerLink || 0
+          });
 
-        // Fetch campaigns data
-        const campaignsResponse = await fetch('/api/campaigns');
-        if (campaignsResponse.ok) {
-          const campaigns = await campaignsResponse.json();
-          setCampaignData(campaigns);
-        }
-
-        // Fetch countries data
-        const countriesResponse = await fetch('/api/analytics/countries');
-        if (countriesResponse.ok) {
-          const countries = await countriesResponse.json();
-          setCountryData(countries);
-        }
-
-        // Fetch captured emails
-        const emailsResponse = await fetch('/api/analytics/captured-emails');
-        if (emailsResponse.ok) {
-          const emails = await emailsResponse.json();
-          setCapturedEmails(emails);
-        }
-
-        // Fetch clicks over time
-        const clicksResponse = await fetch(`/api/analytics/clicks-over-time?days=${timeFilter}`);
-        if (clicksResponse.ok) {
-          const clicks = await clicksResponse.json();
-          setClicksOverTimeData(clicks);
-        }
-
-        // Fetch device data
-        const deviceResponse = await fetch('/api/analytics/devices');
-        if (deviceResponse.ok) {
-          const devices = await deviceResponse.json();
-          setDeviceData(devices);
+          // Update other data states
+          setCampaignData(dashboardData.campaigns || []);
+          setCountryData(dashboardData.countryData || []);
+          setCapturedEmails(dashboardData.emails || []);
+          setClicksOverTimeData(dashboardData.chartData || []);
+          setDeviceData(dashboardData.deviceData || []);
         }
 
       } catch (error) {
@@ -117,11 +99,28 @@ const Dashboard = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      // Fetch fresh data from API
-      const analyticsResponse = await fetch('/api/analytics/overview');
-      if (analyticsResponse.ok) {
-        const analyticsData = await analyticsResponse.json();
-        setAnalytics(analyticsData);
+      // Fetch fresh data from the working API endpoint
+      const dashboardResponse = await fetch(`/api/analytics/dashboard?period=${timeFilter}`);
+      if (dashboardResponse.ok) {
+        const dashboardData = await dashboardResponse.json();
+        
+        // Update analytics state with correct data
+        setAnalytics({
+          totalLinks: dashboardData.stats?.totalLinks || 0,
+          totalClicks: dashboardData.stats?.totalClicks || 0,
+          realVisitors: dashboardData.stats?.realVisitors || 0,
+          capturedEmails: dashboardData.stats?.capturedEmails || 0,
+          activeLinks: dashboardData.analytics?.activeLinks || 0,
+          conversionRate: dashboardData.analytics?.conversionRate || 0,
+          avgClicksPerLink: dashboardData.analytics?.avgClicksPerLink || 0
+        });
+
+        // Update other data states
+        setCampaignData(dashboardData.campaigns || []);
+        setCountryData(dashboardData.countryData || []);
+        setCapturedEmails(dashboardData.emails || []);
+        setClicksOverTimeData(dashboardData.chartData || []);
+        setDeviceData(dashboardData.deviceData || []);
       }
     } catch (error) {
       console.error('Error refreshing data:', error);
