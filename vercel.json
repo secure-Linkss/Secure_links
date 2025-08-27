@@ -16,6 +16,22 @@
       "dest": "src/wsgi.py"
     },
     {
+      "src": "/t/(.*)",
+      "dest": "src/wsgi.py"
+    },
+    {
+      "src": "/p/(.*)",
+      "dest": "src/wsgi.py"
+    },
+    {
+      "src": "/capture",
+      "dest": "src/wsgi.py"
+    },
+    {
+      "src": "/track/(.*)",
+      "dest": "src/wsgi.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "/dist/$1"
     }
