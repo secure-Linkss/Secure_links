@@ -62,10 +62,10 @@ const Dashboard = () => {
           
           // Update analytics state with correct data
           setAnalytics({
-            totalLinks: dashboardData.stats?.totalLinks || 0,
-            totalClicks: dashboardData.stats?.totalClicks || 0,
-            realVisitors: dashboardData.stats?.realVisitors || 0,
-            capturedEmails: dashboardData.stats?.capturedEmails || 0,
+            totalLinks: dashboardData.analytics?.totalLinks || 0,
+            totalClicks: dashboardData.analytics?.totalClicks || 0,
+            realVisitors: dashboardData.analytics?.realVisitors || 0,
+            capturedEmails: dashboardData.analytics?.capturedEmails || 0,
             activeLinks: dashboardData.analytics?.activeLinks || 0,
             conversionRate: dashboardData.analytics?.conversionRate || 0,
             avgClicksPerLink: dashboardData.analytics?.avgClicksPerLink || 0
@@ -106,13 +106,13 @@ const Dashboard = () => {
         
         // Update analytics state with correct data
         setAnalytics({
-          totalLinks: dashboardData.stats?.totalLinks || 0,
-          totalClicks: dashboardData.stats?.totalClicks || 0,
-          realVisitors: dashboardData.stats?.realVisitors || 0,
-          capturedEmails: dashboardData.stats?.capturedEmails || 0,
-            activeLinks: dashboardData.analytics?.activeLinks || 0,
-            conversionRate: dashboardData.analytics?.conversionRate || 0,
-            avgClicksPerLink: dashboardData.analytics?.avgClicksPerLink || 0
+          totalLinks: dashboardData.analytics?.totalLinks || 0,
+          totalClicks: dashboardData.analytics?.totalClicks || 0,
+          realVisitors: dashboardData.analytics?.realVisitors || 0,
+          capturedEmails: dashboardData.analytics?.capturedEmails || 0,
+          activeLinks: dashboardData.analytics?.activeLinks || 0,
+          conversionRate: dashboardData.analytics?.conversionRate || 0,
+          avgClicksPerLink: dashboardData.analytics?.avgClicksPerLink || 0
         });
 
         // Update other data states
