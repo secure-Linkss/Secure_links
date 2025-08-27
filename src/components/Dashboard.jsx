@@ -66,8 +66,8 @@ const Dashboard = () => {
             totalClicks: dashboardData.stats?.totalClicks || 0,
             realVisitors: dashboardData.stats?.realVisitors || 0,
             capturedEmails: dashboardData.stats?.capturedEmails || 0,
-            activeLinks: dashboardData.analytics.activeLinks || 0,
-            conversionRate: dashboardData.analytics.conversionRate || 0,
+            activeLinks: dashboardData.stats?.activeLinks || 0,
+            conversionRate: dashboardData.stats?.conversionRate || 0,
             avgClicksPerLink: dashboardData.analytics?.avgClicksPerLink || 0
           });
 
