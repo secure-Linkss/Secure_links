@@ -23,12 +23,12 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'ej5B3Amppi4gjpbC65te6rJ
 # Enable CORS for all routes
 CORS(app, supports_credentials=True)
 
-# Register blueprints
-app.register_blueprint(user_bp, url_prefix='/api')
-app.register_blueprint(auth_bp, url_prefix='/api')
-app.register_blueprint(links_bp, url_prefix='/api')
-app.register_blueprint(analytics_bp, url_prefix='/api')
-app.register_blueprint(campaigns_bp, url_prefix='/api')
+# Register blueprints BEFORE any catch-all routes
+app.register_blueprint(analytics_bp)  # Register without url_prefix to handle /api/analytics directly
+app.register_blueprint(user_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(links_bp)
+app.register_blueprint(campaigns_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(track_bp)
 app.register_blueprint(events_bp)
