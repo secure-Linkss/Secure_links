@@ -385,7 +385,7 @@ def get_links_stats():
         
         # Calculate stats
         total_links = len(user_links)
-        active_links = len([link for link in user_links if link.is_active])
+        active_links = len([link for link in user_links if link.status == 'active'])
         
         # Get click statistics
         total_clicks = TrackingEvent.query.filter(TrackingEvent.link_id.in_(link_ids)).count()
