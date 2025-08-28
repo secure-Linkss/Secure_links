@@ -30,20 +30,30 @@ const LinkShortener = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/links/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      const response = await fetch('/api/links/stats')
       
       if (response.ok) {
         const data = await response.json()
         setStats(data)
       } else {
-        console.error('Failed to fetch stats')
+        console.error('Failed to fetch stats, using defaults')
+        // Set default stats if API fails
+        setStats({
+          totalLinks: 0,
+          totalClicks: 0,
+          activeLinks: 0,
+          avgCTR: 0
+        })
       }
     } catch (error) {
       console.error('Error fetching stats:', error)
+      // Set default stats if API fails
+      setStats({
+        totalLinks: 0,
+        totalClicks: 0,
+        activeLinks: 0,
+        avgCTR: 0
+      })
     }
   }
 
