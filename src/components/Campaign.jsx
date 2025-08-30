@@ -1,36 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
-import { Progress } from './ui/progress'
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  LineChart,
-  Line
-} from 'recharts'
-import { 
-  Plus, 
-  Target, 
-  TrendingUp, 
-  Users, 
-  MousePointer, 
-  Mail,
-  ChevronDown,
-  ChevronUp,
-  Edit,
-  Trash2,
-  Play,
-  Pause,
-  BarChart3,
-  Calendar,
-  Globe
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 const Campaign = () => {
   const [campaigns, setCampaigns] = useState([])
@@ -50,8 +18,11 @@ const Campaign = () => {
 
   const fetchCampaigns = async () => {
     try {
-      // Use the dashboard endpoint to get campaign data
-      const response = await fetch('/api/analytics/dashboard?period=30')
+      const response = await fetch('/api/campaigns', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
       
       if (response.ok) {
         const data = await response.json()
@@ -68,15 +39,19 @@ const Campaign = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch('/api/analytics/dashboard?period=30')
+      const response = await fetch('/api/analytics/overview', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
       
       if (response.ok) {
         const data = await response.json()
         setAnalytics({
-          totalClicks: data.analytics?.totalClicks || 0,
-          realVisitors: data.analytics?.realVisitors || 0,
-          botsBlocked: (data.analytics?.totalClicks || 0) - (data.analytics?.realVisitors || 0),
-          activeCampaigns: (data.campaigns || []).filter(c => c.status === 'active').length
+          totalClicks: data.totalClicks || 0,
+          realVisitors: data.realVisitors || 0,
+          botsBlocked: data.totalClicks - data.realVisitors || 0,
+          activeCampaigns: data.totalCampaigns || 0
         })
       }
     } catch (error) {
@@ -96,19 +71,19 @@ const Campaign = () => {
     }
     
     try {
-      const response = await fetch('/api/links', {
+      const response = await fetch('/api/campaigns', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          original_url: 'https://example.com',
-          campaign_name: campaignName.trim(),
-          title: campaignName.trim()
+          name: campaignName.trim()
         })
       })
       
       if (response.ok) {
+        const data = await response.json()
         // Refresh campaigns list
         await fetchCampaigns()
         alert('Campaign created successfully!')
@@ -123,332 +98,319 @@ const Campaign = () => {
   }
 
   const handleDeleteCampaign = async (campaignId) => {
-    if (!confirm('Are you sure you want to delete this campaign?')) {
-      return
-    }
-    
-    try {
-      const response = await fetch(`/api/links/${campaignId}`, {
-        method: 'DELETE'
-      })
-      
-      if (response.ok) {
-        await fetchCampaigns()
-        alert('Campaign deleted successfully!')
-      } else {
-        alert('Failed to delete campaign')
-      }
-    } catch (error) {
-      console.error('Error deleting campaign:', error)
-      alert('Failed to delete campaign')
-    }
-  }
-
-  const handleToggleCampaign = async (campaignId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'active' ? 'paused' : 'active'
-      const response = await fetch(`/api/links/${campaignId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          is_active: newStatus === 'active'
+    if (window.confirm('Are you sure you want to delete this campaign?')) {
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         })
+        
+        if (response.ok) {
+          setCampaigns(campaigns.filter(c => c.id !== campaignId))
+        }
+      } catch (error) {
+        console.error('Error deleting campaign:', error)
+      }
+    }
+  }
+
+  const handleToggleStatus = async (campaignId, currentStatus) => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/toggle-status`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
       
       if (response.ok) {
-        await fetchCampaigns()
-      } else {
-        alert('Failed to update campaign status')
+        setCampaigns(campaigns.map(c => 
+          c.id === campaignId 
+            ? { ...c, status: currentStatus === 'active' ? 'paused' : 'active' }
+            : c
+        ))
       }
     } catch (error) {
-      console.error('Error updating campaign:', error)
-      alert('Failed to update campaign')
+      console.error('Error toggling campaign status:', error)
     }
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800'
-      case 'paused':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'completed':
-        return 'bg-blue-100 text-blue-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const generatePerformanceData = (campaign) => {
-    // Generate sample performance data for the chart
-    const data = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const clicks = Math.floor((campaign.clicks || 0) / 7) + Math.floor(Math.random() * 5)
-      const visitors = Math.floor((campaign.visitors || 0) / 7) + Math.floor(Math.random() * 3)
-      
-      data.push({
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        clicks,
-        visitors
-      })
-    }
-    return data
+  const handleCopyTrackingLink = (trackingId) => {
+    const trackingUrl = `${window.location.origin}/t/${trackingId}?id={{id}}`
+    navigator.clipboard.writeText(trackingUrl)
+    alert('Tracking link copied to clipboard!')
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2">Loading campaigns...</span>
+      <div className="p-6 space-y-6 bg-slate-900 min-h-screen">
+        <div className="animate-pulse">
+          <div className="h-8 bg-slate-700 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-24 bg-slate-700 rounded"></div>
+            ))}
+          </div>
+          <div className="h-64 bg-slate-700 rounded"></div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6 bg-slate-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
-          <p className="text-muted-foreground">
-            Manage and monitor your tracking campaigns
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-purple-400 rounded-lg flex items-center justify-center">
+            <span className="text-slate-900 font-bold">📊</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Campaign Management</h1>
+            <p className="text-slate-400">Advanced campaign analytics and management dashboard</p>
+          </div>
         </div>
         
-        <Button onClick={handleCreateCampaign}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Campaign
-        </Button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleCreateCampaign}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+          >
+            Create Campaign
+          </button>
+        </div>
       </div>
 
-      {/* Analytics Overview */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
-            <MousePointer className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.totalClicks}</div>
-            <p className="text-xs text-muted-foreground">
-              Across all campaigns
-            </p>
-          </CardContent>
-        </Card>
+      {/* Compact Analytics Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <span className="text-blue-400 text-lg">👆</span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Total Clicks</p>
+              <p className="text-xl font-bold text-white">{analytics.totalClicks.toLocaleString()}</p>
+              <p className="text-xs text-green-400">Live Data</p>
+            </div>
+          </div>
+        </div>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Real Visitors</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.realVisitors}</div>
-            <p className="text-xs text-muted-foreground">
-              Unique human visitors
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/20 rounded-lg">
+              <span className="text-green-400 text-lg">👥</span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Real Visitors</p>
+              <p className="text-xl font-bold text-white">{analytics.realVisitors.toLocaleString()}</p>
+              <p className="text-xs text-green-400">Live Data</p>
+            </div>
+          </div>
+        </div>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bots Blocked</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.botsBlocked}</div>
-            <p className="text-xs text-muted-foreground">
-              Automated traffic filtered
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-500/20 rounded-lg">
+              <span className="text-red-400 text-lg">🛡️</span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Bots Blocked</p>
+              <p className="text-xl font-bold text-white">{analytics.botsBlocked.toLocaleString()}</p>
+              <p className="text-xs text-green-400">Live Data</p>
+            </div>
+          </div>
+        </div>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.activeCampaigns}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently running
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <span className="text-purple-400 text-lg">📈</span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Active Campaigns</p>
+              <p className="text-xl font-bold text-white">{analytics.activeCampaigns}</p>
+              <p className="text-xs text-green-400">Live Data</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Campaigns List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Campaign Performance</CardTitle>
-          <CardDescription>
-            Overview of all your tracking campaigns
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {campaigns.map((campaign) => (
-              <div key={campaign.id} className="border rounded-lg p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Target className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{campaign.name}</h3>
-                      <p className="text-sm text-muted-foreground">ID: {campaign.trackingId}</p>
+      {/* Campaign List */}
+      <div className="bg-slate-800 border border-slate-700 rounded-lg">
+        <div className="p-4 border-b border-slate-700">
+          <h3 className="text-lg font-bold text-white">Your Campaigns</h3>
+          <p className="text-sm text-slate-400">Manage and monitor your tracking campaigns</p>
+        </div>
+        
+        <div className="p-4">
+          {campaigns.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="mb-4">
+                <span className="text-6xl">📊</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No Campaigns Yet</h3>
+              <p className="text-slate-400 mb-6">Create your first campaign to start tracking links and analyzing performance.</p>
+              <button 
+                onClick={handleCreateCampaign}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium"
+              >
+                Create Your First Campaign
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {campaigns.map((campaign) => (
+                <div key={campaign.id} className="bg-slate-700/50 rounded-lg border border-slate-600">
+                  {/* Campaign Header */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full ${
+                            campaign.status === 'active' ? 'bg-green-400' : 'bg-yellow-400'
+                          }`}></div>
+                          <div>
+                            <h4 className="text-lg font-bold text-white">{campaign.name}</h4>
+                            <p className="text-sm text-slate-400">ID: {campaign.trackingId}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-6 text-sm">
+                          <div>
+                            <p className="text-slate-400">Clicks</p>
+                            <p className="font-bold text-white">{campaign.clicks.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">Visitors</p>
+                            <p className="font-bold text-white">{campaign.visitors.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">Emails</p>
+                            <p className="font-bold text-white">{campaign.emails.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">Conv. Rate</p>
+                            <p className="font-bold text-green-400">{campaign.conversionRate}%</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleCopyTrackingLink(campaign.trackingId)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                          title="Copy tracking link"
+                        >
+                          📋 Copy
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(campaign.id, campaign.status)}
+                          className={`px-3 py-1.5 rounded text-sm ${
+                            campaign.status === 'active' 
+                              ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+                              : 'bg-green-600 hover:bg-green-700 text-white'
+                          }`}
+                        >
+                          {campaign.status === 'active' ? '⏸️ Pause' : '▶️ Resume'}
+                        </button>
+                        <button
+                          onClick={(e) => toggleCampaignExpansion(e, campaign.id)}
+                          className="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded text-sm"
+                        >
+                          {expandedCampaign === campaign.id ? '🔼 Collapse' : '🔽 Expand'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCampaign(campaign.id)}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-4">
-                    <Badge className={getStatusColor(campaign.status)}>
-                      {campaign.status}
-                    </Badge>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleCampaign(campaign.id, campaign.status)}
-                      >
-                        {campaign.status === 'active' ? (
-                          <Pause className="h-4 w-4" />
-                        ) : (
-                          <Play className="h-4 w-4" />
-                        )}
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => toggleCampaignExpansion(e, campaign.id)}
-                      >
-                        {expandedCampaign === campaign.id ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteCampaign(campaign.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Campaign Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">{campaign.clicks}</p>
-                    <p className="text-sm text-muted-foreground">Clicks</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">{campaign.visitors}</p>
-                    <p className="text-sm text-muted-foreground">Visitors</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">{campaign.emails}</p>
-                    <p className="text-sm text-muted-foreground">Emails</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">{campaign.conversionRate}%</p>
-                    <p className="text-sm text-muted-foreground">Conversion</p>
-                  </div>
-                </div>
-                
-                {/* Expanded Details */}
-                {expandedCampaign === campaign.id && (
-                  <div className="border-t pt-4 space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {/* Performance Chart */}
-                      <div>
-                        <h4 className="font-medium mb-2">7-Day Performance</h4>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <LineChart data={generatePerformanceData(campaign)}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="clicks" stroke="#8884d8" strokeWidth={2} />
-                            <Line type="monotone" dataKey="visitors" stroke="#82ca9d" strokeWidth={2} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                      
-                      {/* Campaign Details */}
-                      <div className="space-y-4">
+                  {/* Expanded Campaign Details */}
+                  {expandedCampaign === campaign.id && (
+                    <div className="border-t border-slate-600 p-4 bg-slate-800/50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Campaign Info */}
                         <div>
-                          <h4 className="font-medium mb-2">Campaign Details</h4>
+                          <h5 className="font-semibold text-white mb-3">Campaign Details</h5>
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Created:</span>
-                              <span>{campaign.created ? new Date(campaign.created).toLocaleDateString() : 'N/A'}</span>
+                              <span className="text-slate-400">Status:</span>
+                              <span className={`font-medium ${
+                                campaign.status === 'active' ? 'text-green-400' : 'text-yellow-400'
+                              }`}>
+                                {campaign.status === 'active' ? 'Active' : 'Paused'}
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Status:</span>
-                              <Badge className={getStatusColor(campaign.status)}>
-                                {campaign.status}
-                              </Badge>
+                              <span className="text-slate-400">Created:</span>
+                              <span className="text-white">
+                                {campaign.created ? new Date(campaign.created).toLocaleDateString() : 'N/A'}
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Tracking ID:</span>
-                              <span className="font-mono">{campaign.trackingId}</span>
+                              <span className="text-slate-400">Tracking ID:</span>
+                              <span className="text-white font-mono">{campaign.trackingId}</span>
                             </div>
                           </div>
                         </div>
                         
+                        {/* Performance Metrics */}
                         <div>
-                          <h4 className="font-medium mb-2">Performance Metrics</h4>
+                          <h5 className="font-semibold text-white mb-3">Performance</h5>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Total Clicks:</span>
+                              <span className="text-white font-bold">{campaign.clicks.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Unique Visitors:</span>
+                              <span className="text-white font-bold">{campaign.visitors.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Email Captures:</span>
+                              <span className="text-white font-bold">{campaign.emails.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Conversion Rate:</span>
+                              <span className="text-green-400 font-bold">{campaign.conversionRate}%</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Quick Actions */}
+                        <div>
+                          <h5 className="font-semibold text-white mb-3">Quick Actions</h5>
                           <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">Click-through Rate</span>
-                              <span className="text-sm font-medium">{campaign.conversionRate}%</span>
-                            </div>
-                            <Progress value={campaign.conversionRate} className="h-2" />
-                            
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">Visitor Engagement</span>
-                              <span className="text-sm font-medium">
-                                {campaign.visitors > 0 ? Math.round((campaign.emails / campaign.visitors) * 100) : 0}%
-                              </span>
-                            </div>
-                            <Progress 
-                              value={campaign.visitors > 0 ? (campaign.emails / campaign.visitors) * 100 : 0} 
-                              className="h-2" 
-                            />
+                            <button 
+                              onClick={() => handleCopyTrackingLink(campaign.trackingId)}
+                              className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                            >
+                              📋 Copy Tracking Link
+                            </button>
+                            <button className="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm">
+                              📊 View Analytics
+                            </button>
+                            <button className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm">
+                              ⚙️ Edit Campaign
+                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {campaigns.length === 0 && (
-              <div className="text-center py-8">
-                <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No campaigns yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Create your first campaign to start tracking links
-                </p>
-                <Button onClick={handleCreateCampaign}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Campaign
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

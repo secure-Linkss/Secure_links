@@ -1,42 +1,7 @@
-import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Button } from './ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Badge } from './ui/badge'
-import { Progress } from './ui/progress'
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  AreaChart,
-  Area
-} from 'recharts'
-import { 
-  TrendingUp, 
-  Users, 
-  MousePointer, 
-  Mail, 
-  Globe, 
-  Smartphone, 
-  Monitor, 
-  Tablet,
-  RefreshCw,
-  Download,
-  Calendar,
-  Target
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 const Analytics = () => {
-  const [timeRange, setTimeRange] = useState('7')
+  const [timeRange, setTimeRange] = useState('7d')
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState({
     totalClicks: 0,
@@ -49,7 +14,6 @@ const Analytics = () => {
   const [topCampaigns, setTopCampaigns] = useState([])
   const [devices, setDevices] = useState([])
   const [countries, setCountries] = useState([])
-  const [performanceData, setPerformanceData] = useState([])
 
   useEffect(() => {
     fetchAnalyticsData()
@@ -58,81 +22,65 @@ const Analytics = () => {
   const fetchAnalyticsData = async () => {
     setLoading(true)
     try {
-      // Use the correct dashboard endpoint that returns all data
-      const dashboardResponse = await fetch(`/api/analytics/dashboard?period=${timeRange}`)
+      // Fetch overview analytics
+      const overviewResponse = await fetch('/api/analytics/overview', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
       
-      if (dashboardResponse.ok) {
-        const dashboardData = await dashboardResponse.json()
-        
-        // Set analytics overview
+      if (overviewResponse.ok) {
+        const overviewData = await overviewResponse.json()
         setAnalytics({
-          totalClicks: dashboardData.analytics?.totalClicks || 0,
-          uniqueVisitors: dashboardData.analytics?.realVisitors || 0,
-          conversionRate: dashboardData.analytics?.conversionRate || 0,
+          totalClicks: overviewData.totalClicks || 0,
+          uniqueVisitors: overviewData.realVisitors || 0,
+          conversionRate: overviewData.conversionRate || 0,
           bounceRate: 34.2, // This would need to be calculated from actual data
-          capturedEmails: dashboardData.analytics?.capturedEmails || 0,
-          activeLinks: dashboardData.analytics?.activeLinks || 0
+          capturedEmails: overviewData.capturedEmails || 0,
+          activeLinks: overviewData.activeLinks || 0
         })
-        
-        // Set campaigns data
-        const campaigns = (dashboardData.campaigns || []).slice(0, 3).map(campaign => ({
+      }
+
+      // Fetch campaigns data
+      const campaignsResponse = await fetch('/api/campaigns', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (campaignsResponse.ok) {
+        const campaignsData = await campaignsResponse.json()
+        const campaigns = (campaignsData.campaigns || []).slice(0, 3).map(campaign => ({
           name: campaign.name,
-          clicks: campaign.clicks || 0,
-          conversions: campaign.emails || 0,
-          rate: campaign.conversionRate || 0
+          clicks: campaign.total_clicks || 0,
+          conversions: Math.floor((campaign.total_clicks || 0) * (campaign.conversion_rate || 0) / 100),
+          rate: campaign.conversion_rate || 0
         }))
         setTopCampaigns(campaigns)
-        
-        // Set countries data
-        setCountries((dashboardData.countries || []).slice(0, 4))
-        
-        // Generate device data based on total clicks
-        const totalClicks = dashboardData.analytics?.totalClicks || 0
-        if (totalClicks > 0) {
-          setDevices([
-            { 
-              name: 'Desktop', 
-              value: Math.floor(totalClicks * 0.6), 
-              percentage: 60,
-              icon: Monitor
-            },
-            { 
-              name: 'Mobile', 
-              value: Math.floor(totalClicks * 0.35), 
-              percentage: 35,
-              icon: Smartphone
-            },
-            { 
-              name: 'Tablet', 
-              value: Math.floor(totalClicks * 0.05), 
-              percentage: 5,
-              icon: Tablet
-            }
-          ])
-        } else {
-          setDevices([])
+      }
+
+      // Fetch device analytics
+      const devicesResponse = await fetch('/api/analytics/devices', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-        
-        // Generate performance data over time
-        const performanceData = []
-        for (let i = parseInt(timeRange) - 1; i >= 0; i--) {
-          const date = new Date()
-          date.setDate(date.getDate() - i)
-          const dateStr = date.toISOString().split('T')[0]
-          
-          // Distribute data over the time period
-          const dailyClicks = Math.floor(totalClicks / parseInt(timeRange)) || 0
-          const dailyVisitors = Math.floor((dashboardData.analytics?.realVisitors || 0) / parseInt(timeRange)) || 0
-          const dailyEmails = Math.floor((dashboardData.analytics?.capturedEmails || 0) / parseInt(timeRange)) || 0
-          
-          performanceData.push({
-            date: dateStr,
-            clicks: dailyClicks + Math.floor(Math.random() * 5),
-            visitors: dailyVisitors + Math.floor(Math.random() * 3),
-            emails: dailyEmails + Math.floor(Math.random() * 2)
-          })
+      })
+      
+      if (devicesResponse.ok) {
+        const devicesData = await devicesResponse.json()
+        setDevices(devicesData || [])
+      }
+
+      // Fetch countries analytics
+      const countriesResponse = await fetch('/api/analytics/countries', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-        setPerformanceData(performanceData)
+      })
+      
+      if (countriesResponse.ok) {
+        const countriesData = await countriesResponse.json()
+        setCountries((countriesData || []).slice(0, 4))
       }
 
     } catch (error) {
@@ -147,310 +95,280 @@ const Analytics = () => {
   }
 
   const handleExport = () => {
-    // Create CSV data
-    const csvData = [
-      ['Metric', 'Value'],
-      ['Total Clicks', analytics.totalClicks],
-      ['Unique Visitors', analytics.uniqueVisitors],
-      ['Conversion Rate', `${analytics.conversionRate}%`],
-      ['Captured Emails', analytics.capturedEmails],
-      ['Active Links', analytics.activeLinks]
-    ]
-    
-    const csvContent = csvData.map(row => row.join(',')).join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `analytics-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
+    // Implement export functionality
+    console.log('Export analytics data')
   }
-
-  const chartColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1']
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2">Loading analytics...</span>
+      <div className="p-6 space-y-6 bg-slate-900 min-h-screen">
+        <div className="animate-pulse">
+          <div className="h-8 bg-slate-700 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-24 bg-slate-700 rounded"></div>
+            ))}
+          </div>
+          <div className="h-64 bg-slate-700 rounded mb-6"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-64 bg-slate-700 rounded"></div>
+            <div className="h-64 bg-slate-700 rounded"></div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6 bg-slate-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground">
-            Detailed insights into your link performance
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-purple-400 rounded-lg flex items-center justify-center">
+            <span className="text-slate-900 font-bold">📊</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Analytics Dashboard</h1>
+            <p className="text-slate-400">Your comprehensive performance overview</p>
+          </div>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Time range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Last 24 hours</SelectItem>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Button onClick={handleRefresh} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          
-          <Button onClick={handleExport} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
+        <div className="flex gap-2">
+          <select 
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="bg-slate-800 border border-slate-600 text-white rounded-lg px-4 py-2"
+          >
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="90d">Last 90 Days</option>
+          </select>
+          <button 
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+          >
+            🔄 Refresh
+          </button>
+          <button 
+            onClick={handleExport}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+          >
+            📥 Export
+          </button>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
-            <MousePointer className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.totalClicks}</div>
-            <p className="text-xs text-muted-foreground">
-              +12% from last period
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unique Visitors</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.uniqueVisitors}</div>
-            <p className="text-xs text-muted-foreground">
-              +8% from last period
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.conversionRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              +2.1% from last period
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Captured Emails</CardTitle>
-            <Mail className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.capturedEmails}</div>
-            <p className="text-xs text-muted-foreground">
-              +15% from last period
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bounce Rate</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.bounceRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              -3.2% from last period
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Links</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.activeLinks}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently active
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Performance Over Time */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Over Time</CardTitle>
-            <CardDescription>
-              Clicks, visitors, and email captures over the selected period
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="clicks" stackId="1" stroke="#8884d8" fill="#8884d8" />
-                <Area type="monotone" dataKey="visitors" stackId="1" stroke="#82ca9d" fill="#82ca9d" />
-                <Area type="monotone" dataKey="emails" stackId="1" stroke="#ffc658" fill="#ffc658" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Device Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Device Breakdown</CardTitle>
-            <CardDescription>
-              Traffic distribution by device type
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={devices}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percentage }) => `${name} ${percentage}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {devices.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Analytics */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Top Campaigns */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Performing Campaigns</CardTitle>
-            <CardDescription>
-              Your best converting campaigns
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topCampaigns.map((campaign, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">{campaign.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {campaign.clicks} clicks • {campaign.conversions} conversions
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="secondary">{campaign.rate}%</Badge>
-                  </div>
-                </div>
-              ))}
-              {topCampaigns.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">No campaigns found</p>
-              )}
+      {/* Key Metrics - Compact Design */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <span className="text-blue-400 text-lg">👆</span>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Geographic Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Countries</CardTitle>
-            <CardDescription>
-              Traffic by geographic location
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {countries.map((country, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{country.flag}</span>
-                    <div>
-                      <p className="text-sm font-medium">{country.country}</p>
-                      <p className="text-sm text-muted-foreground">{country.clicks} clicks</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{country.percentage}%</p>
-                    <Progress value={country.percentage} className="w-16 h-2" />
-                  </div>
-                </div>
-              ))}
-              {countries.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">No country data found</p>
-              )}
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Total Clicks</p>
+              <p className="text-xl font-bold text-white">{analytics.totalClicks.toLocaleString()}</p>
+              <p className="text-xs text-green-400">Live Data</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/20 rounded-lg">
+              <span className="text-green-400 text-lg">👥</span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Visitors</p>
+              <p className="text-xl font-bold text-white">{analytics.uniqueVisitors.toLocaleString()}</p>
+              <p className="text-xs text-green-400">Live Data</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <span className="text-purple-400 text-lg">📈</span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Conv. Rate</p>
+              <p className="text-xl font-bold text-white">{analytics.conversionRate}%</p>
+              <p className="text-xs text-green-400">Live Data</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-500/20 rounded-lg">
+              <span className="text-orange-400 text-lg">📧</span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Emails</p>
+              <p className="text-xl font-bold text-white">{analytics.capturedEmails.toLocaleString()}</p>
+              <p className="text-xs text-green-400">Live Data</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Device Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Device Analytics</CardTitle>
-          <CardDescription>
-            Detailed breakdown of device usage
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {devices.map((device, index) => {
-              const IconComponent = device.icon
+      {/* Traffic Trends Chart */}
+      <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold text-white">Traffic Trends</h3>
+            <p className="text-slate-400">Clicks, visitors, and conversions over time</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm">
+              📊 Clicks
+            </button>
+            <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm">
+              👥 Visitors
+            </button>
+            <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm">
+              📈 Conversions
+            </button>
+          </div>
+        </div>
+        
+        {/* Chart Visualization */}
+        <div className="bg-slate-900 rounded-lg p-6 h-64 relative">
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 to-transparent rounded-lg"></div>
+          <div className="relative h-full flex items-end justify-between">
+            {Array.from({ length: 7 }, (_, i) => {
+              const height = Math.max(20, (analytics.totalClicks / 7) * (0.5 + Math.random() * 0.5))
               return (
-                <div key={index} className="flex items-center space-x-4 p-4 border rounded-lg">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <IconComponent className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{device.name}</p>
-                    <p className="text-sm text-muted-foreground">{device.value} clicks</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{device.percentage}%</p>
-                    <Progress value={device.percentage} className="w-16 h-2" />
-                  </div>
+                <div key={i} className="flex flex-col items-center gap-2">
+                  <div 
+                    className="bg-gradient-to-t from-blue-500 to-blue-400 rounded-t"
+                    style={{ 
+                      height: `${Math.min(height, 80)}%`, 
+                      width: '20px' 
+                    }}
+                  ></div>
+                  <span className="text-xs text-slate-400">
+                    {new Date(Date.now() - (6-i) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'short' })}
+                  </span>
                 </div>
               )
             })}
-            {devices.length === 0 && (
-              <p className="text-center text-muted-foreground py-4 col-span-3">No device data found</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Campaigns */}
+        <div className="bg-slate-800 border border-slate-700 rounded-lg">
+          <div className="p-4 border-b border-slate-700">
+            <h3 className="text-lg font-bold text-white">Top Performing Campaigns</h3>
+            <p className="text-sm text-slate-400">Best campaigns by conversion rate</p>
+          </div>
+          <div className="p-4">
+            {topCampaigns.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-slate-400">No campaign data available</p>
+                <p className="text-slate-500 text-sm">Create campaigns to see performance data</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {topCampaigns.map((campaign, index) => (
+                  <div key={campaign.name} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        index === 0 ? 'bg-yellow-500/20' : index === 1 ? 'bg-blue-500/20' : 'bg-purple-500/20'
+                      }`}>
+                        <span className="text-lg">
+                          {index === 0 ? '🏆' : index === 1 ? '🥈' : '🥉'}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-white">{campaign.name}</p>
+                        <p className="text-sm text-slate-400">{campaign.clicks.toLocaleString()} clicks</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-green-400">{campaign.rate}%</p>
+                      <p className="text-sm text-slate-400">{campaign.conversions} conv.</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Device Breakdown */}
+        <div className="bg-slate-800 border border-slate-700 rounded-lg">
+          <div className="p-4 border-b border-slate-700">
+            <h3 className="text-lg font-bold text-white">Device Breakdown</h3>
+            <p className="text-sm text-slate-400">Traffic distribution by device type</p>
+          </div>
+          <div className="p-4">
+            {devices.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-slate-400">No device data available</p>
+                <p className="text-slate-500 text-sm">Data will appear as users visit your links</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {devices.map((device, index) => (
+                  <div key={device.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: device.color }}
+                      ></div>
+                      <span className="text-white font-medium">{device.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-white font-bold">{device.value}%</span>
+                      <p className="text-xs text-slate-400">{device.count} visits</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Geographic Distribution */}
+      <div className="bg-slate-800 border border-slate-700 rounded-lg">
+        <div className="p-4 border-b border-slate-700">
+          <h3 className="text-lg font-bold text-white">Geographic Distribution</h3>
+          <p className="text-sm text-slate-400">Top countries by traffic volume</p>
+        </div>
+        <div className="p-4">
+          {countries.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-400">No geographic data available</p>
+              <p className="text-slate-500 text-sm">Data will appear as users visit your links</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {countries.map((country) => (
+                <div key={country.country} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{country.flag}</span>
+                    <div>
+                      <p className="font-medium text-white">{country.country}</p>
+                      <p className="text-sm text-slate-400">{country.clicks} clicks</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-blue-400">{country.percentage}%</p>
+                    <p className="text-xs text-slate-400">{country.visitors} visitors</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
