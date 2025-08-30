@@ -1,4 +1,30 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { Badge } from './ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { 
+  Plus, 
+  Link as LinkIcon, 
+  Copy, 
+  ExternalLink, 
+  Edit, 
+  Trash2, 
+  Search,
+  RefreshCw,
+  BarChart3,
+  MousePointer,
+  Users,
+  TrendingUp,
+  Calendar,
+  Globe,
+  Eye,
+  EyeOff
+} from 'lucide-react'
 
 const LinkShortener = () => {
   const [links, setLinks] = useState([])
@@ -30,15 +56,17 @@ const LinkShortener = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/links/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      // Use the dashboard endpoint to get analytics data
+      const response = await fetch('/api/analytics/dashboard?period=30')
       
       if (response.ok) {
         const data = await response.json()
-        setStats(data)
+        setStats({
+          totalLinks: data.analytics?.totalLinks || 0,
+          totalClicks: data.analytics?.totalClicks || 0,
+          activeLinks: data.analytics?.activeLinks || 0,
+          avgCTR: data.analytics?.avgClicksPerLink || 0
+        })
       } else {
         console.error('Failed to fetch stats')
       }
@@ -50,11 +78,7 @@ const LinkShortener = () => {
   const fetchLinks = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/links', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      const response = await fetch('/api/links')
       
       if (response.ok) {
         const data = await response.json()
@@ -89,25 +113,19 @@ const LinkShortener = () => {
     setFormError('')
 
     try {
-      const response = await fetch('/api/links/create', {
+      const response = await fetch('/api/links', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          originalUrl: formData.originalUrl,
-          title: '',
-          campaign: formData.campaign,
-          domain: formData.domain,
-          customDomain: '',
-          expiryDate: '',
-          password: '',
-          description: '',
-          expiration_period: formData.expiration_period
+          original_url: formData.originalUrl,
+          title: formData.campaign || 'Untitled Link',
+          campaign_name: formData.campaign || 'Default Campaign',
+          short_code: formData.customShortCode || undefined
         })
       })
-
+      
       if (response.ok) {
         const data = await response.json()
         setShowCreateModal(false)
@@ -118,419 +136,398 @@ const LinkShortener = () => {
           campaign: '',
           expiration_period: 'never'
         })
-        await fetchLinks() // Refresh the links list
-        await fetchStats() // Refresh the stats
+        await fetchLinks()
+        await fetchStats()
+        alert('Link created successfully!')
       } else {
         const errorData = await response.json()
         setFormError(errorData.error || 'Failed to create link')
       }
     } catch (error) {
-      setFormError('Network error occurred')
+      console.error('Error creating link:', error)
+      setFormError('Failed to create link')
     } finally {
       setFormLoading(false)
     }
   }
 
+  const handleCopyLink = (shortUrl) => {
+    navigator.clipboard.writeText(shortUrl)
+    alert('Link copied to clipboard!')
+  }
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    // You could add a toast notification here
+  const handleDeleteLink = async (linkId) => {
+    if (!confirm('Are you sure you want to delete this link?')) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/links/${linkId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        await fetchLinks()
+        await fetchStats()
+        alert('Link deleted successfully!')
+      } else {
+        alert('Failed to delete link')
+      }
+    } catch (error) {
+      console.error('Error deleting link:', error)
+      alert('Failed to delete link')
+    }
+  }
+
+  const handleToggleLink = async (linkId, currentStatus) => {
+    try {
+      const response = await fetch(`/api/links/${linkId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          is_active: !currentStatus
+        })
+      })
+      
+      if (response.ok) {
+        await fetchLinks()
+        await fetchStats()
+      } else {
+        alert('Failed to update link status')
+      }
+    } catch (error) {
+      console.error('Error updating link:', error)
+      alert('Failed to update link')
+    }
+  }
+
+  const filteredLinks = links.filter(link => {
+    const matchesSearch = link.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         link.short_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         link.original_url?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesFilter = filterStatus === 'all' || 
+                         (filterStatus === 'active' && link.is_active) ||
+                         (filterStatus === 'inactive' && !link.is_active)
+    
+    return matchesSearch && matchesFilter
+  })
+
+  const getStatusBadge = (isActive) => {
+    return isActive ? (
+      <Badge className="bg-green-100 text-green-800">Active</Badge>
+    ) : (
+      <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2">Loading links...</span>
+      </div>
+    )
   }
 
   return (
-    <div className="p-6 space-y-6 bg-slate-900 min-h-screen">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-blue-400 rounded-lg flex items-center justify-center">
-            <span className="text-slate-900 font-bold">✂️</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Link Shortener</h1>
-            <p className="text-slate-400">Create and manage short links</p>
-          </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Link Shortener</h1>
+          <p className="text-muted-foreground">
+            Create and manage your shortened tracking links
+          </p>
         </div>
         
-        <button 
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-        >
-          ✂️ Create Short Link
-        </button>
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} variant="outline" disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          
+          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Link
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Create New Link</DialogTitle>
+                <DialogDescription>
+                  Create a new shortened tracking link for your campaign.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleFormSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="originalUrl">Original URL *</Label>
+                  <Input
+                    id="originalUrl"
+                    name="originalUrl"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={formData.originalUrl}
+                    onChange={handleFormChange}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="campaign">Campaign Name</Label>
+                  <Input
+                    id="campaign"
+                    name="campaign"
+                    placeholder="My Campaign"
+                    value={formData.campaign}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="customShortCode">Custom Short Code (Optional)</Label>
+                  <Input
+                    id="customShortCode"
+                    name="customShortCode"
+                    placeholder="my-link"
+                    value={formData.customShortCode}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="domain">Domain</Label>
+                  <Select value={formData.domain} onValueChange={(value) => setFormData({...formData, domain: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vercel">Vercel Domain</SelectItem>
+                      <SelectItem value="custom">Custom Domain</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {formError && (
+                  <div className="text-red-600 text-sm">{formError}</div>
+                )}
+                
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={formLoading}>
+                    {formLoading ? 'Creating...' : 'Create Link'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Compact Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <span className="text-blue-400 text-lg">🔗</span>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Total Links</p>
-              <p className="text-xl font-bold text-white">{stats.totalLinks}</p>
-              <p className="text-xs text-green-400">+{Math.floor(stats.totalLinks * 0.5)} this week</p>
-            </div>
-          </div>
-        </div>
+      {/* Stats Overview */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Links</CardTitle>
+            <LinkIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalLinks}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.activeLinks} active
+            </p>
+          </CardContent>
+        </Card>
         
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/20 rounded-lg">
-              <span className="text-green-400 text-lg">👆</span>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Total Clicks</p>
-              <p className="text-xl font-bold text-white">{stats.totalClicks.toLocaleString()}</p>
-              <p className="text-xs text-green-400">+{((stats.totalClicks * 0.153) || 0).toFixed(1)}%</p>
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
+            <MousePointer className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalClicks}</div>
+            <p className="text-xs text-muted-foreground">
+              All time clicks
+            </p>
+          </CardContent>
+        </Card>
         
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/20 rounded-lg">
-              <span className="text-purple-400 text-lg">✅</span>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Active Links</p>
-              <p className="text-xl font-bold text-white">{stats.activeLinks}</p>
-              <p className="text-xs text-slate-400">{stats.totalLinks - stats.activeLinks} expired</p>
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Links</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activeLinks}</div>
+            <p className="text-xs text-muted-foreground">
+              Currently active
+            </p>
+          </CardContent>
+        </Card>
         
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-500/20 rounded-lg">
-              <span className="text-orange-400 text-lg">📊</span>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Avg. CTR</p>
-              <p className="text-xl font-bold text-white">{stats.avgCTR.toFixed(1)}%</p>
-              <p className="text-xs text-green-400">+{(stats.avgCTR * 0.07).toFixed(1)}%</p>
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Clicks/Link</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.avgCTR.toFixed(1)}</div>
+            <p className="text-xs text-muted-foreground">
+              Per link average
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <div className="absolute left-3 top-3 h-4 w-4 bg-slate-400 rounded"></div>
-          <input
-            placeholder="Search by original URL, short code, or campaign name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-600 text-white rounded-lg focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-        <select className="w-48 bg-slate-800 border border-slate-600 text-white rounded-lg px-4 py-2.5 focus:border-blue-500 focus:outline-none">
-          <option value="all">All Links</option>
-          <option value="active">Active</option>
-          <option value="expired">Expired</option>
-          <option value="campaign">With Campaign</option>
-        </select>
-        <button className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg">
-          📥 Export CSV
-        </button>
-      </div>
-
-      {/* Links Table */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
-        <div className="p-6 border-b border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">Link Shortener Dashboard</h3>
-              <p className="text-slate-400">{links.length} links found</p>
+      {/* Search and Filter */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search links..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm">
-                📊 Analytics
-              </button>
-              <button className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm">
-                🔄 Bulk Actions
-              </button>
-            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Links</SelectItem>
+                <SelectItem value="active">Active Only</SelectItem>
+                <SelectItem value="inactive">Inactive Only</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-700/50">
-              <tr>
-                <th className="text-left text-slate-300 p-4 font-medium">Short Link</th>
-                <th className="text-left text-slate-300 p-4 font-medium">Original URL</th>
-                <th className="text-left text-slate-300 p-4 font-medium">Performance</th>
-                <th className="text-left text-slate-300 p-4 font-medium">Campaign</th>
-                <th className="text-left text-slate-300 p-4 font-medium">Status</th>
-                <th className="text-left text-slate-300 p-4 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center text-slate-400 py-12">
-                    <div className="animate-spin h-8 w-8 border-2 border-blue-400 border-t-transparent rounded-full mx-auto mb-3"></div>
-                    Loading links...
-                  </td>
-                </tr>
-              ) : (
-                links.map((link) => (
-                  <tr key={link.id} className="border-b border-slate-700 hover:bg-slate-700/30 transition-colors">
-                    <td className="p-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <code className="bg-slate-700 text-blue-400 px-2 py-1 rounded text-sm font-mono">
-                            {link.shortUrl}
-                          </code>
-                          <button 
-                            onClick={() => copyToClipboard(link.shortUrl)}
-                            className="p-1 bg-slate-600 hover:bg-slate-500 text-white rounded transition-colors"
-                            title="Copy"
-                          >
-                            <span className="text-xs">📋</span>
-                          </button>
-                        </div>
-                        <p className="text-xs text-slate-400">Created: {link.created}</p>
+        </CardContent>
+      </Card>
+
+      {/* Links List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Links</CardTitle>
+          <CardDescription>
+            Manage and track your shortened links
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {filteredLinks.map((link) => (
+              <div key={link.id} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-medium">{link.title || 'Untitled Link'}</h3>
+                      {getStatusBadge(link.is_active)}
+                    </div>
+                    
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-muted-foreground">Short URL:</span>
+                        <code className="bg-gray-100 px-2 py-1 rounded text-blue-600">
+                          {window.location.origin}/t/{link.short_code}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyLink(`${window.location.origin}/t/${link.short_code}`)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="max-w-xs">
-                        <p className="text-white text-sm truncate" title={link.originalUrl}>
-                          {link.originalUrl}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {link.expiry ? `Expires: ${link.expiry}` : 'Never expires'}
-                        </p>
+                      
+                      <div className="flex items-center space-x-2">
+                        <span className="text-muted-foreground">Original:</span>
+                        <a 
+                          href={link.original_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex items-center space-x-1"
+                        >
+                          <span className="truncate max-w-md">{link.original_url}</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
                       </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-mono text-sm">{link.clicks.toLocaleString()}</span>
-                          <span className="text-xs text-slate-400">clicks</span>
+                      
+                      {link.campaign_name && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-muted-foreground">Campaign:</span>
+                          <span>{link.campaign_name}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-mono text-sm">{link.visitors.toLocaleString()}</span>
-                          <span className="text-xs text-slate-400">visitors</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      {link.campaign ? (
-                        <span className="inline-flex items-center gap-1 bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-sm">
-                          📊 {link.campaign}
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 text-sm">No campaign</span>
                       )}
-                    </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium ${
-                        link.status === 'Active' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        <div className={`h-2 w-2 rounded-full ${
-                          link.status === 'Active' ? 'bg-green-400' : 'bg-red-400'
-                        }`}></div>
-                        {link.status}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1">
-                        <button className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors" title="Analytics">
-                          <span className="text-sm">📊</span>
-                        </button>
-                        <button className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors" title="Edit">
-                          <span className="text-sm">✏️</span>
-                        </button>
-                        <button className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors" title="QR Code">
-                          <span className="text-sm">📱</span>
-                        </button>
-                        <button className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors" title="Share">
-                          <span className="text-sm">🔗</span>
-                        </button>
-                        <button className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors" title="Delete">
-                          <span className="text-sm">🗑️</span>
-                        </button>
+                      
+                      <div className="flex items-center space-x-2">
+                        <span className="text-muted-foreground">Created:</span>
+                        <span>{link.created_at ? new Date(link.created_at).toLocaleDateString() : 'N/A'}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Quick Actions Footer */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-400">Most Clicked</p>
-              <p className="text-lg font-bold text-white">blt.ly/def456</p>
-              <p className="text-xs text-green-400">2,340 clicks</p>
-            </div>
-            <div className="h-8 w-8 bg-green-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-green-400">🏆</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-400">Best CTR</p>
-              <p className="text-lg font-bold text-white">77.8%</p>
-              <p className="text-xs text-blue-400">blt.ly/def456</p>
-            </div>
-            <div className="h-8 w-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-blue-400">📈</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-400">Recent Activity</p>
-              <p className="text-lg font-bold text-white">12</p>
-              <p className="text-xs text-purple-400">clicks today</p>
-            </div>
-            <div className="h-8 w-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-purple-400">⚡</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Create Link Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Create Short Link</h3>
-              <button 
-                onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-6 text-sm">
+                      <div className="flex items-center space-x-1">
+                        <MousePointer className="h-4 w-4 text-muted-foreground" />
+                        <span>{link.click_count || 0} clicks</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>{link.unique_visitors || 0} visitors</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleLink(link.id, link.is_active)}
+                    >
+                      {link.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteLink(link.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
             
-            {formError && (
-              <div className="mb-4 p-3 bg-red-600/20 border border-red-600 text-red-400 rounded-lg">
-                {formError}
+            {filteredLinks.length === 0 && (
+              <div className="text-center py-8">
+                <LinkIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No links found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchTerm || filterStatus !== 'all' 
+                    ? 'Try adjusting your search or filter criteria'
+                    : 'Create your first shortened link to get started'
+                  }
+                </p>
+                {!searchTerm && filterStatus === 'all' && (
+                  <Button onClick={() => setShowCreateModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Link
+                  </Button>
+                )}
               </div>
             )}
-            
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Original URL
-                </label>
-                <input
-                  type="url"
-                  name="originalUrl"
-                  value={formData.originalUrl}
-                  onChange={handleFormChange}
-                  placeholder="https://example.com/your-long-url"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:border-blue-500 focus:outline-none"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Custom Short Code (Optional)
-                </label>
-                <input
-                  type="text"
-                  name="customShortCode"
-                  value={formData.customShortCode}
-                  onChange={handleFormChange}
-                  placeholder="my-custom-link"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Domain
-                </label>
-                <select 
-                  name="domain"
-                  value={formData.domain}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="vercel">Vercel Domain (Free)</option>
-                  <option value="shortio">Short.io Integration</option>
-                  <option value="custom">Custom Domain</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Campaign (Optional)
-                </label>
-                <select 
-                  name="campaign"
-                  value={formData.campaign}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">No Campaign</option>
-                  <option value="summer-sale">Summer Sale 2024</option>
-                  <option value="winter-promo">Winter Promotion</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Link Expiration
-                </label>
-                <select 
-                  name="expiration_period"
-                  value={formData.expiration_period}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="never">Never Expires</option>
-                  <option value="5hrs">5 Hours</option>
-                  <option value="10hrs">10 Hours</option>
-                  <option value="24hrs">24 Hours</option>
-                  <option value="48hrs">48 Hours</option>
-                  <option value="72hrs">72 Hours</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-              
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={formLoading}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
-                >
-                  {formLoading ? 'Creating...' : 'Create Link'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

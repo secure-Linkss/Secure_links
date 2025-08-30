@@ -2,18 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "outputDirectory": "dist",
-        "installCommand": "npm install --force",
-        "buildCommand": "npm run build"
-      }
-    },
-    {
       "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
@@ -39,14 +29,12 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/$1"
+      "dest": "api/index.py"
     }
   ],
   "env": {
     "SECRET_KEY": "ej5B3Amppi4gjpbC65te6rJuvJzgVCWW_xfB-ZLR1TE",
-    "DATABASE_URL": "postgresql://neondb_owner:npg_7CcKbPRm2GDw@ep-odd-thunder-ade4ip4a-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-    "SHORTIO_API_KEY": "sk_DbGGlUHPN7Z9VotL",
-    "SHORTIO_DOMAIN": "Secure-links.short.gy"
+    "DATABASE_URL": "postgresql://neondb_owner:npg_7CcKbPRm2GDw@ep-odd-thunder-ade4ip4a-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require"
   }
 }
 
