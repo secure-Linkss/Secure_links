@@ -6,7 +6,7 @@
       "use": "@vercel/static-build",
       "config": {
         "outputDirectory": "dist",
-        "installCommand": "npm install --legacy-peer-deps"
+        "installCommand": "pnpm install"
       }
     }
   ],
