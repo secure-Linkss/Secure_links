@@ -6,7 +6,7 @@
       "use": "@vercel/static-build",
       "config": {
         "outputDirectory": "dist",
-        "installCommand": "pnpm install"
+        "installCommand": "npm install"
       }
     }
   ],
@@ -20,7 +20,8 @@
     "SECRET_KEY": "ej5B3Amppi4gjpbC65te6rJuvJzgVCWW_xfB-ZLR1TE",
     "DATABASE_URL": "postgresql://neondb_owner:npg_7CcKbPRm2GDw@ep-odd-thunder-ade4ip4a-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
     "SHORTIO_API_KEY": "sk_DbGGlUHPN7Z9VotL",
-    "SHORTIO_DOMAIN": "Secure-links.short.gy"
+    "SHORTIO_DOMAIN": "Secure-links.short.gy",
+    "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
   }
 }
 
