@@ -2,18 +2,44 @@
   "version": 2,
   "builds": [
     {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
+    },
+    {
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "outputDirectory": "dist",
-        "installCommand": "npm install --legacy-peer-deps"
+        "installCommand": "npm install --force",
+        "buildCommand": "npm run build"
       }
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/s/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/p/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/pixel/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/t/(.*)",
+      "dest": "api/index.py"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "api/index.py"
     }
   ],
   "env": {
