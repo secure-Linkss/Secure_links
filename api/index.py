@@ -1,6 +1,6 @@
 import os
 import sys
-# DON'T CHANGE THIS !!!
+# DON\'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory
@@ -30,8 +30,8 @@ app.register_blueprint(links_bp, url_prefix='/api')
 app.register_blueprint(analytics_bp, url_prefix='/api')
 app.register_blueprint(campaigns_bp, url_prefix='/api')
 app.register_blueprint(settings_bp, url_prefix='/api')
-app.register_blueprint(track_bp, url_prefix='/api')
-app.register_blueprint(events_bp, url_prefix='/api')
+app.register_blueprint(track_bp)
+app.register_blueprint(events_bp)
 
 # Database configuration - use SQLite for testing
 database_url = os.environ.get('DATABASE_URL')
