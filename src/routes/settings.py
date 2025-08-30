@@ -75,6 +75,7 @@ def save_settings():
         # Save settings to user record
         user.settings = json.dumps(settings_data)
         db.session.commit()
+        logger.info(f"Settings saved for user {user.id}: {settings_data}")
         
         return jsonify({
             'success': True,
