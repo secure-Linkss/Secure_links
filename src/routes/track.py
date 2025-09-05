@@ -246,10 +246,8 @@ def track_click(short_code):
         preview_url = f"{link.preview_template_url}?target={link.target_url}&uid={unique_id}"
         return redirect(preview_url)
     
-    # Implement intermediate Google redirect
-    domain_part = link.target_url.split("//")[1].split("/")[0]
-    google_redirect_url = f"https://www.google.com/search?q=site%3A{domain_part}&btnI=I&safe=active&url={link.target_url}"
-    return redirect(google_redirect_url)
+    return redirect(link.target_url)
+
 
 @track_bp.route("/p/<short_code>")
 def tracking_pixel(short_code):

@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from src.models.user import User, db
 from src.models.link import Link
 from src.models.tracking_event import TrackingEvent
+from datetime import datetime, timedelta
 import os
 
 events_bp = Blueprint('events', __name__)
@@ -52,19 +53,28 @@ def get_events():
         events_list = []
         for event, short_code in events:
             # Format timestamp for display
-            timestamp_str = event.timestamp.strftime('%Y-%m-%d %H:%M:%S') if event.timestamp else 'Unknown'
+            now = datetime.utcnow()
+            time_diff = now - event.timestamp
+            if time_diff.days > 0:
+                timestamp_str = f"{time_diff.days} days ago"
+            elif time_diff.seconds > 3600:
+                timestamp_str = f"{time_diff.seconds // 3600} hours ago"
+            elif time_diff.seconds > 60:
+                timestamp_str = f"{time_diff.seconds // 60} minutes ago"
+            else:
+                timestamp_str = "Just now"
             
             # Create location string
             location_parts = []
-            if event.city and event.city != 'Unknown':
+            if event.city and event.city != "Unknown":
                 location_parts.append(event.city)
-            if event.region and event.region != 'Unknown':
+            if event.region and event.region != "Unknown":
                 location_parts.append(event.region)
-            if event.zip_code and event.zip_code != 'Unknown':
+            if event.zip_code and event.zip_code != "Unknown":
                 location_parts.append(event.zip_code)
-            if event.country and event.country != 'Unknown':
+            if event.country and event.country != "Unknown":
                 location_parts.append(event.country)
-            location = ', '.join(location_parts) if location_parts else 'Unknown Location'
+            location = ", ".join(location_parts) if location_parts else "Unknown Location"
             
             # Format browser and OS info
             browser_info = f"{event.browser or 'Unknown'}"
@@ -83,29 +93,29 @@ def get_events():
                 session_duration = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             
             events_list.append({
-                'id': event.id,
-                'uniqueId': event.unique_id or f"uid_{short_code}_{event.id:03d}",
-                'timestamp': timestamp_str,
-                'ip': event.ip_address or 'Unknown',
-                'location': location,
-                'zipCode': event.zip_code or 'Unknown',
-                'region': event.region or 'Unknown',
-                'country': event.country or 'Unknown',
-                'city': event.city or 'Unknown',
-                'userAgent': event.user_agent or 'Unknown',
-                'browser': browser_info,
-                'os': os_info,
-                'device': event.device_type or 'Unknown',
-                'status': event.status or 'Open',
-                'detailedStatus': get_detailed_status(event),
-                'linkId': short_code or f"link_{event.link_id}",
-                'campaignId': f"camp_{event.link_id:03d}",
-                'referrer': event.referrer or 'direct',
-                'isp': event.isp or 'Unknown',
-                'ispDetails': event.organization or event.isp or 'Unknown ISP',
-                'emailCaptured': event.captured_email,
-                'conversionValue': 0,  # This would need to be calculated based on business logic
-                'sessionDuration': session_duration
+                "id": event.id,
+                "uniqueId": event.unique_id or f"uid_{short_code}_{event.id:03d}",
+                "timestamp": timestamp_str,
+                "ip": event.ip_address or "Unknown",
+                "location": location,
+                "zipCode": event.zip_code or "Unknown",
+                "region": event.region or "Unknown",
+                "country": event.country or "Unknown",
+                "city": event.city or "Unknown",
+                "userAgent": event.user_agent or "Unknown",
+                "browser": browser_info,
+                "os": os_info,
+                "device": event.device_type or "Unknown",
+                "status": event.status or "Open",
+                "detailedStatus": get_detailed_status(event),
+                "linkId": short_code or f"link_{event.link_id}",
+                "campaignId": f"camp_{event.link_id:03d}",
+                "referrer": event.referrer or "direct",
+                "isp": event.isp or "Unknown",
+                "ispDetails": event.organization or event.isp or "Unknown ISP",
+                "emailCaptured": event.captured_email,
+                "conversionValue": 0,  # This would need to be calculated based on business logic
+                "sessionDuration": session_duration
             })
         
         return jsonify({
