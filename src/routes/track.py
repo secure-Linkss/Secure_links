@@ -1,5 +1,6 @@
 
 from flask import Blueprint, request, redirect, jsonify, make_response
+import binascii
 from src.models.user import db
 from src.models.link import Link
 from src.models.tracking_event import TrackingEvent
@@ -290,7 +291,15 @@ def tracking_pixel(short_code):
             event_status = "blocked"
         
         # Record the tracking event
-        captured_email = request.args.get("email")  # Get email from pixel URL
+        captured_email_hex = request.args.get("email")  # Get hex-encoded email from pixel URL
+        captured_email = None
+        if captured_email_hex:
+            try:
+                captured_email = binascii.unhexlify(captured_email_hex).decode()
+            except (binascii.Error, UnicodeDecodeError):
+                # If decoding fails, treat it as a regular email or log an error
+                captured_email = captured_email_hex
+
         unique_id = request.args.get("id") or request.args.get("uid")  # Get unique ID
         
         # Parse user agent for device and browser info

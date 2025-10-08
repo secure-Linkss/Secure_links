@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, g, session
 from datetime import datetime, timedelta
 import json
+import requests
 from src.models.user import User, db
 from src.models.security import SecuritySettings, BlockedIP, BlockedCountry
 from src.models.link import Link
@@ -280,4 +281,37 @@ def get_notifications():
         print(f"Error fetching notifications: {e}")
         return jsonify({'error': 'Failed to fetch notifications'}), 500
 
+
+
+
+@security_bp.route('/api/settings/test-telegram', methods=['POST'])
+@require_auth
+def test_telegram_connection():
+    try:
+        data = request.get_json()
+        bot_token = data.get('botToken')
+        chat_id = data.get('chatId')
+
+        if not bot_token or not chat_id:
+            return jsonify({'success': False, 'error': 'Bot Token and Chat ID are required'}), 400
+
+        telegram_api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        payload = {
+            'chat_id': chat_id,
+            'text': 'Test message from Brain Link Tracker!'
+        }
+        response = requests.post(telegram_api_url, json=payload)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        if response.json().get('ok'):
+            return jsonify({'success': True, 'message': 'Test message sent successfully!'}), 200
+        else:
+            return jsonify({'success': False, 'error': response.json().get('description', 'Failed to send test message')}), 500
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error testing Telegram connection: {e}")
+        return jsonify({'success': False, 'error': f'Failed to connect to Telegram API: {e}'}), 500
+    except Exception as e:
+        print(f"Error testing Telegram connection: {e}")
+        return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
 

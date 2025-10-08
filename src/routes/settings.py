@@ -103,10 +103,8 @@ def test_telegram():
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
-        
-        bot_token = data.get('bot_token')
-        chat_id = data.get('chat_id')
-        
+        bot_token = data.get(\'botToken\')
+        chat_id = data.get(\'chatId\')
         if not bot_token or not chat_id:
             return jsonify({'success': False, 'error': 'Bot token and chat ID are required'}), 400
         
