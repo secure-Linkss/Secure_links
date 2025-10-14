@@ -1,4 +1,4 @@
-#!/home/ubuntu/upload/Secure_links-master/venv/bin/python3
+#!/home/ubuntu/Secure_links/venv/bin/python3.11
 # -*- coding: utf-8 -*-
 import re
 import sys
