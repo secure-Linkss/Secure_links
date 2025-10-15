@@ -56,6 +56,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 with app.app_context():
+    if os.environ.get('VERCEL_ENV') == 'production' and not database_url:
+        raise Exception("DATABASE_URL environment variable is not set for production deployment.")
     db.create_all()
     # Create default admin user if not exists
     if not User.query.filter_by(username="Brain").first():
