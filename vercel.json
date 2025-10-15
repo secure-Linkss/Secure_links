@@ -22,9 +22,9 @@
     { "src": "/(.*)", "dest": "/dist/index.html" }
   ],
   "env": {
-    "SECRET_KEY": "SECRET_KEY",
-    "DATABASE_URL": "DATABASE_URL",
-    "SHORTIO_API_KEY": "SHORTIO_API_KEY",
-    "SHORTIO_DOMAIN": "SHORTIO_DOMAIN"
+    "SECRET_KEY": "ej5B3Amppi4gjpbC65te6rJuvJzgVCWW_xfB-ZLR1TE",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_7CcKbPRm2GDw@ep-odd-thunder-ade4ip4a-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+    "SHORTIO_API_KEY": "sk_DbGGlUHPN7Z9VotL",
+    "SHORTIO_DOMAIN": "Secure-links.short.gy"
   }
 }
