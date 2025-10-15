@@ -6,3 +6,9 @@ __pycache__/
 
 
 .vercel
+node_modules/.pnpm-workspace-state.json
+src/database/app.db
+src/models/__pycache__/
+src/routes/__pycache__/
+src/services/__pycache__/
+src/utils/__pycache__/
