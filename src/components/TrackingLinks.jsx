@@ -181,7 +181,7 @@ const TrackingLinks = () => {
 
     try {
       console.log('Creating link with data:', newLink);
-      const response = await fetch('/api/links', {
+      const response = await fetch("/api/links", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

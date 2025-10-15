@@ -44,6 +44,10 @@ def create_link():
         original_url = sanitize_input(data.get("originalUrl"))
         title = sanitize_input(data.get("title", ""))
         campaign = sanitize_input(data.get("campaign", ""))
+        # Add a new variable for campaign_name to align with the Link model
+        campaign_name = campaign if campaign else title if title else "Untitled Campaign"
+        description = sanitize_input(data.get("description", ""))
+        password = sanitize_input(data.get("password", ""))
         domain_type = data.get("domain", "vercel")
         custom_domain = sanitize_input(data.get("customDomain", ""))
         expiry_date = data.get("expiryDate")
@@ -101,7 +105,9 @@ def create_link():
             user_id=user.id,
             target_url=original_url,
             short_code=short_code,
-            campaign_name=campaign if campaign else "Untitled Campaign"
+            campaign_name=campaign_name,
+            description=description,
+            password=password
         )
         
         # Set expiry date if provided
@@ -179,6 +185,8 @@ def links():
         
         target_url = sanitize_input(data.get("target_url", ""))
         campaign_name = sanitize_input(data.get("campaign_name", "Untitled Campaign"))
+        description = sanitize_input(data.get("description", ""))
+        password = sanitize_input(data.get("password", ""))
         preview_template_url = sanitize_input(data.get("preview_template_url", ""))
         
         # Security features
@@ -218,6 +226,8 @@ def links():
                 short_code=short_code,
                 target_url=target_url,
                 campaign_name=campaign_name,
+                description=description,
+                password=password,
                 capture_email=capture_email,
                 capture_password=capture_password,
                 bot_blocking_enabled=bot_blocking_enabled,

