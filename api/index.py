@@ -19,7 +19,12 @@ from src.routes.settings import settings_bp
 from src.routes.telegram import telegram_bp
 from src.routes.security import security_bp
 
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), '..', 'src', 'static'))
+# Use dist folder for production, src/static for development
+static_folder = os.path.join(os.path.dirname(__file__), '..', 'dist')
+if not os.path.exists(static_folder):
+    static_folder = os.path.join(os.path.dirname(__file__), '..', 'src', 'static')
+
+app = Flask(__name__, static_folder=static_folder)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'ej5B3Amppi4gjpbC65te6rJuvJzgVCWW_xfB-ZLR1TE')
 
 # Enable CORS for all routes
@@ -83,6 +88,8 @@ def serve(path):
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Use debug mode only in development
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
 
 

@@ -25,8 +25,11 @@ def sanitize_input(text):
         return ""
     return text.strip()
 
-@links_bp.route("/links/create", methods=["POST"])
+@links_bp.route("/links/create", methods=["POST", "OPTIONS"])
 def create_link():
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        return jsonify({"success": True}), 200
     user = require_auth()
     if not user:
         return jsonify({"success": False, "error": "Authentication required"}), 401
@@ -58,11 +61,11 @@ def create_link():
             short_url = f"{base_url}/s/{short_code}"
         elif domain_type == "shortio":
             # Use Short.io API to create a short link
-            shortio_api_key = "sk_DbGGlUHPN7Z9VotL"  # Provided API key
+            shortio_api_key = os.environ.get("SHORTIO_API_KEY", "sk_DbGGlUHPN7Z9VotL")
             if not shortio_api_key:
                 return jsonify({"success": False, "error": "Short.io API key not configured"}), 500
             
-            shortio_domain = "Secure-links.short.gy"  # Provided domain
+            shortio_domain = os.environ.get("SHORTIO_DOMAIN", "Secure-links.short.gy")
             if not shortio_domain:
                 return jsonify({"success": False, "error": "Short.io domain not configured"}), 500
 
@@ -129,8 +132,10 @@ def create_link():
         return jsonify({"error": f"Failed to create link with Short.io: {e}"}), 500
     except Exception as e:
         db.session.rollback()
+        import traceback
         print(f"Error creating link: {e}")
-        return jsonify({"error": "Failed to create link"}), 500
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"Failed to create link: {str(e)}"}), 500
 @links_bp.route("/links", methods=["GET", "POST", "PUT", "DELETE"])
 def links():
     user = require_auth()

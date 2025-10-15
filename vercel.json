@@ -1,49 +1,21 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "dist/**",
-      "use": "@vercel/static"
-    }
+    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
+    { "src": "api/**/*.py", "use": "@vercel/python" },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/s/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/p/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/pixel/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/t/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "dist/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "dist/index.html"
-    }
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
+  "functions": {
+    "api/**/*.py": { "runtime": "python3.9", "maxDuration": 10 }
+  },
   "env": {
-    "SECRET_KEY": "ej5B3Amppi4gjpbC65te6rJuvJzgVCWW_xfB-ZLR1TE",
-    "DATABASE_URL": "postgresql://neondb_owner:npg_7CcKbPRm2GDw@ep-odd-thunder-ade4ip4a-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-    "SHORTIO_API_KEY": "sk_DbGGlUHPN7Z9VotL",
-    "SHORTIO_DOMAIN": "Secure-links.short.gy"
+    "SECRET_KEY": "@secret_key",
+    "DATABASE_URL": "@database_url",
+    "SHORTIO_API_KEY": "@shortio_api_key",
+    "SHORTIO_DOMAIN": "@shortio_domain"
   }
 }

@@ -180,14 +180,20 @@ const TrackingLinks = () => {
     }
 
     try {
+      console.log('Creating link with data:', newLink);
       const response = await fetch('/api/links', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
+        credentials: 'include',
         body: JSON.stringify(newLink)
       });
+      
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
       
       if (response.ok) {
         fetchLinks();
@@ -212,11 +218,22 @@ const TrackingLinks = () => {
           blocked_regions: [],
           expiration_period: 'never'
         });
+        
+        // Show success notification
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium';
+        notification.textContent = 'Tracking link created successfully!';
+        document.body.appendChild(notification);
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 3000);
       } else {
-        console.error('Failed to create link:', response.statusText);
+        console.error('Failed to create link:', response.statusText, responseData);
+        alert(`Failed to create link: ${responseData.error || response.statusText}`);
       }
     } catch (error) {
       console.error('Error creating link:', error);
+      alert(`Error creating link: ${error.message}`);
     }
   };
 
