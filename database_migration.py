@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Database Migration Script for Secure Links Project
-This script ensures all required database columns exist for the User model.
+This script ensures all required database columns exist for the User and Link models.
 """
 
 import os
@@ -31,8 +31,31 @@ def migrate_database(database_url):
         
         print("Starting database migration...")
         
-        # List of all required columns with their types
-        required_columns = [
+        # List of all required columns with their types for the Link model
+        required_link_columns = [
+            ("expiry_date", "TIMESTAMP"),
+            ("description", "TEXT"),
+            ("password", "VARCHAR(255)")
+        ]
+
+        # Check and add missing columns for Link model
+        for col_name, col_type in required_link_columns:
+            cursor.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='link' AND column_name=%s;
+            """, (col_name,))
+            
+            if not cursor.fetchone():
+                print(f"Adding missing '{col_name}' column to link table...")
+                cursor.execute(f'ALTER TABLE "link" ADD COLUMN {col_name} {col_type};')
+                conn.commit()
+                print(f"Column '{col_name}' added successfully to link table!")
+            else:
+                print(f"Column '{col_name}' already exists in link table.")
+
+        # List of all required columns with their types for the User model
+        required_user_columns = [
             ("role", "VARCHAR(20) DEFAULT 'member'"),
             ("settings", "TEXT"),
             ("last_login", "TIMESTAMP"),
@@ -52,8 +75,8 @@ def migrate_database(database_url):
             ("telegram_enabled", "BOOLEAN DEFAULT FALSE")
         ]
         
-        # Check and add missing columns
-        for col_name, col_type in required_columns:
+        # Check and add missing columns for User model
+        for col_name, col_type in required_user_columns:
             cursor.execute("""
                 SELECT column_name 
                 FROM information_schema.columns 
@@ -61,12 +84,12 @@ def migrate_database(database_url):
             """, (col_name,))
             
             if not cursor.fetchone():
-                print(f"Adding missing '{col_name}' column...")
+                print(f"Adding missing '{col_name}' column to users table...")
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type};")
                 conn.commit()
-                print(f"Column '{col_name}' added successfully!")
+                print(f"Column '{col_name}' added successfully to users table!")
             else:
-                print(f"Column '{col_name}' already exists.")
+                print(f"Column '{col_name}' already exists in users table.")
         
         cursor.close()
         conn.close()

