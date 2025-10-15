@@ -21,9 +21,9 @@
     { "src": "/(.*)", "dest": "/index.html" }
   ],
   "env": {
-    "SECRET_KEY": "@secret_key",
-    "DATABASE_URL": "@database_url",
-    "SHORTIO_API_KEY": "@shortio_api_key",
-    "SHORTIO_DOMAIN": "@shortio_domain"
+    "SECRET_KEY": "SECRET_KEY",
+    "DATABASE_URL": "DATABASE_URL",
+    "SHORTIO_API_KEY": "SHORTIO_API_KEY",
+    "SHORTIO_DOMAIN": "SHORTIO_DOMAIN"
   }
 }
