@@ -1,6 +1,6 @@
 import os
 import sys
-# DON\'T CHANGE THIS !!!
+# DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory
@@ -21,7 +21,7 @@ from src.routes.security import security_bp
 
 # Use dist folder for production, src/static for development
 static_folder = os.path.join(os.path.dirname(__file__), '..', 'dist')
-if not os.path.exists(static_folder):
+if not os.path.exists(static_folder) and os.environ.get('VERCEL_ENV') != 'production':
     static_folder = os.path.join(os.path.dirname(__file__), '..', 'src', 'static')
 
 app = Flask(__name__, static_folder=static_folder)
@@ -89,7 +89,6 @@ def serve(path):
 
 if __name__ == "__main__":
     # Use debug mode only in development
-    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    debug_mode = os.environ.get('FLASK_ENV') == 'development' or os.environ.get('VERCEL_ENV') == 'development'
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)
-
 
