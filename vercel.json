@@ -1,17 +1,25 @@
 {
   "version": 2,
   "builds": [
-    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
-    { "src": "api/**/*.py", "use": "@vercel/python" },
-    { "src": "api/**/*.js", "use": "@vercel/node" }
+    { 
+      "src": "package.json", 
+      "use": "@vercel/static-build", 
+      "config": { "distDir": "dist" }
+    },
+    { 
+      "src": "api/**/*.py", 
+      "use": "@vercel/python",
+      "config": { "runtime": "python3.9", "maxDuration": 10 }
+    },
+    { 
+      "src": "api/**/*.js", 
+      "use": "@vercel/node"
+    }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
-  "functions": {
-    "api/**/*.py": { "runtime": "python3.9", "maxDuration": 10 }
-  },
   "env": {
     "SECRET_KEY": "@secret_key",
     "DATABASE_URL": "@database_url",
