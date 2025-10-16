@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const CreateLinkModal = ({ isOpen, onClose, onLinkCreated }) => {
+const CreateLinkModal = ({ isOpen, onClose, onLinkCreated, domains = ['vercel'] }) => {
   const [formData, setFormData] = useState({
     originalUrl: '',
     title: '',
@@ -131,16 +131,19 @@ const CreateLinkModal = ({ isOpen, onClose, onLinkCreated }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Domain
             </label>
-            <select
-              name="domain"
-              value={formData.domain}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="vercel">Vercel Domain (Free)</option>
-              <option value="shortio">Short.io Integration</option>
-              <option value="custom">Custom Domain</option>
-            </select>
+	            <select
+	              name="domain"
+	              value={formData.domain}
+	              onChange={handleChange}
+	              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+	            >
+	              {domains.map(d => (
+	                <option key={d} value={d}>
+	                  {d === 'vercel' ? 'Vercel Domain (Free)' : d === 'shortio' ? 'Short.io Integration' : d}
+	                </option>
+	              ))}
+	              <option value="custom">Custom Domain</option>
+	            </select>
           </div>
 
           {formData.domain === 'custom' && (

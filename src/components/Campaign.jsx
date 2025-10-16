@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import CreateCampaignModal from './CreateCampaignModal'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
@@ -36,6 +37,7 @@ const Campaign = () => {
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedCampaign, setExpandedCampaign] = useState(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [analytics, setAnalytics] = useState({
     totalClicks: 0,
     realVisitors: 0,
@@ -89,37 +91,10 @@ const Campaign = () => {
     setExpandedCampaign(expandedCampaign === campaignId ? null : campaignId);
   };
 
-  const handleCreateCampaign = async () => {
-    const campaignName = prompt('Enter campaign name:')
-    if (!campaignName || !campaignName.trim()) {
-      return
-    }
-    
-    try {
-      const response = await fetch('/api/links', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          original_url: 'https://example.com',
-          campaign_name: campaignName.trim(),
-          title: campaignName.trim()
-        })
-      })
-      
-      if (response.ok) {
-        // Refresh campaigns list
-        await fetchCampaigns()
-        alert('Campaign created successfully!')
-      } else {
-        const errorData = await response.json()
-        alert(errorData.error || 'Failed to create campaign')
-      }
-    } catch (error) {
-      console.error('Error creating campaign:', error)
-      alert('Failed to create campaign')
-    }
+  const handleCampaignCreated = (newCampaign) => {
+    // Since the backend creates a link, we'll just refresh the list to get the new campaign
+    fetchCampaigns()
+    setShowCreateModal(false)
   }
 
   const handleDeleteCampaign = async (campaignId) => {
@@ -219,7 +194,7 @@ const Campaign = () => {
           </p>
         </div>
         
-        <Button onClick={handleCreateCampaign}>
+	        <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Campaign
         </Button>
@@ -280,7 +255,12 @@ const Campaign = () => {
         </Card>
       </div>
 
-      {/* Campaigns List */}
+	      {/* Campaigns List */}
+        <CreateCampaignModal 
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onCampaignCreated={handleCampaignCreated}
+        />
       <Card>
         <CardHeader>
           <CardTitle>Campaign Performance</CardTitle>

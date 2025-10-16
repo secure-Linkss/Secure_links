@@ -4,6 +4,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import CreateLinkModal from './CreateLinkModal'
 import { Badge } from './ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
@@ -30,6 +31,7 @@ const LinkShortener = () => {
   const [links, setLinks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [domains, setDomains] = useState(['vercel', 'shortio']) // Add shortio domain for multi-domain feature
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
@@ -107,49 +109,10 @@ const LinkShortener = () => {
     })
   }
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault()
-    setFormLoading(true)
-    setFormError('')
-
-    try {
-      console.log("Form data:", formData);
-      const response = await fetch('/api/links', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          original_url: formData.originalUrl,
-          title: formData.campaign || 'Untitled Link',
-          campaign_name: formData.campaign || 'Default Campaign',
-          short_code: formData.customShortCode || undefined
-        })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setShowCreateModal(false)
-        setFormData({
-          originalUrl: '',
-          customShortCode: '',
-          domain: 'vercel',
-          campaign: '',
-          expiration_period: 'never'
-        })
-        await fetchLinks()
-        await fetchStats()
-        alert('Link created successfully!')
-      } else {
-        const errorData = await response.json()
-        setFormError(errorData.error || 'Failed to create link')
-      }
-    } catch (error) {
-      console.error('Error creating link:', error)
-      setFormError('Failed to create link')
-    } finally {
-      setFormLoading(false)
-    }
+  const handleLinkCreated = () => {
+    fetchLinks()
+    fetchStats()
+    setShowCreateModal(false)
   }
 
   const handleCopyLink = (shortUrl) => {
@@ -250,84 +213,10 @@ const LinkShortener = () => {
             Refresh
           </Button>
           
-          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Link
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Create New Link</DialogTitle>
-                <DialogDescription>
-                  Create a new shortened tracking link for your campaign.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="originalUrl">Original URL *</Label>
-                  <Input
-                    id="originalUrl"
-                    name="originalUrl"
-                    type="url"
-                    placeholder="https://example.com"
-                    value={formData.originalUrl}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="campaign">Campaign Name</Label>
-                  <Input
-                    id="campaign"
-                    name="campaign"
-                    placeholder="My Campaign"
-                    value={formData.campaign}
-                    onChange={handleFormChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="customShortCode">Custom Short Code (Optional)</Label>
-                  <Input
-                    id="customShortCode"
-                    name="customShortCode"
-                    placeholder="my-link"
-                    value={formData.customShortCode}
-                    onChange={handleFormChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="domain">Domain</Label>
-                  <Select value={formData.domain} onValueChange={(value) => setFormData({...formData, domain: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="vercel">Vercel Domain</SelectItem>
-                      <SelectItem value="custom">Custom Domain</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {formError && (
-                  <div className="text-red-600 text-sm">{formError}</div>
-                )}
-                
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={formLoading}>
-                    {formLoading ? 'Creating...' : 'Create Link'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+	          <Button onClick={() => setShowCreateModal(true)}>
+	            <Plus className="h-4 w-4 mr-2" />
+	            Create Link
+	          </Button>
         </div>
       </div>
 
@@ -415,7 +304,13 @@ const LinkShortener = () => {
         </CardContent>
       </Card>
 
-      {/* Links List */}
+	      {/* Links List */}
+        <CreateLinkModal 
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onLinkCreated={handleLinkCreated}
+          domains={domains}
+        />
       <Card>
         <CardHeader>
           <CardTitle>Your Links</CardTitle>
