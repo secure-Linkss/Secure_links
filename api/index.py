@@ -60,12 +60,12 @@ with app.app_context():
         raise Exception("DATABASE_URL environment variable is not set for production deployment.")
     db.create_all()
     # Create default admin user if not exists
-    if not User.query.filter_by(username="Brain").first():
-        admin_user = User(username="Brain", email="admin@brainlinktracker.com", role="admin")
+    if User.query.count() == 0:
+        admin_user = User(username="SecureAdmin", email="admin@securelinks.com", role="admin")
         admin_user.set_password("Mayflower1!!")
         db.session.add(admin_user)
         db.session.commit()
-        print("Default admin user \"Brain\" created.")
+        print("Default admin user \"SecureAdmin\" created.")
 
 @app.route('/', defaults={'path': ''}) 
 @app.route('/<path:path>')
