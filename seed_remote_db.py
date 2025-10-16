@@ -17,6 +17,7 @@ def seed_db_remote():
         # Check if user already exists
         user = User.query.filter_by(username="Brain").first()
         if not user:
+            print("Creating default admin user 'Brain'...")
             # Create a user
             user = User(username="Brain", email="admin@brainlinktracker.com", role="admin")
             user.set_password("Mayflower1!!")
@@ -37,7 +38,17 @@ def seed_db_remote():
             print("User 'Brain' already exists. Skipping seeding.")
 
 if __name__ == "__main__":
-    # Set the DATABASE_URL environment variable for the script
-    os.environ["DATABASE_URL"] = "postgresql://neondb_owner:npg_7CcKbPRm2GDw@ep-odd-thunder-ade4ip4a-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    # Get database URL from environment or command line
+    database_url = os.environ.get('DATABASE_URL')
+    
+    if len(sys.argv) > 1:
+        database_url = sys.argv[1]
+    
+    if not database_url:
+        print("Error: DATABASE_URL not provided")
+        print("Usage: python3 seed_remote_db.py [DATABASE_URL]")
+        sys.exit(1)
+        
+    os.environ["DATABASE_URL"] = database_url
     seed_db_remote()
 
