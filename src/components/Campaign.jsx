@@ -420,7 +420,7 @@ const Campaign = () => {
                 <p className="text-muted-foreground mb-4">
                   Create your first campaign to start tracking links
                 </p>
-                <Button onClick={handleCreateCampaign}>
+	                <Button onClick={() => setShowCreateModal(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Your First Campaign
                 </Button>
