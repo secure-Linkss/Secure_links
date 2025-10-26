@@ -1,0 +1,10 @@
+{
+  "total_routes_tested": 0,
+  "successful_routes": 0,
+  "failed_routes": 0,
+  "authentication_working": false,
+  "admin_routes_working": false,
+  "user_routes_working": false,
+  "public_routes_working": false,
+  "detailed_results": []
+}

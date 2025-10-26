@@ -1,0 +1,35 @@
+{
+  "frontend_build": true,
+  "backend_running": false,
+  "database_connected": true,
+  "api_routes_tested": [],
+  "missing_implementations": [
+    "Missing database table: subscription_verification"
+  ],
+  "database_tables": [
+    "audit_logs",
+    "blocked_countries",
+    "blocked_ips",
+    "campaigns",
+    "domains",
+    "ip_blocklist",
+    "link",
+    "links",
+    "notifications",
+    "quantum_nonces",
+    "security_settings",
+    "security_threats",
+    "subscription_history",
+    "subscription_verifications",
+    "support_ticket_comments",
+    "support_tickets",
+    "tracking_event",
+    "tracking_events",
+    "users"
+  ],
+  "live_data_issues": [],
+  "component_issues": [],
+  "recommendations": [
+    "Implement missing components and database tables"
+  ]
+}

@@ -50,6 +50,8 @@ from src.routes.pending_users import pending_users_bp
 from src.routes.payments import payments_bp
 from src.routes.crypto_payments import crypto_payments_bp
 from src.routes.support_tickets import support_tickets_bp
+from src.routes.admin_missing import admin_missing_bp
+from src.routes.user_missing import user_missing_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), '..', 'dist'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'ej5B3Amppi4gjpbC65te6rJuvJzgVCWW_xfB-ZLR1TE')
@@ -134,6 +136,8 @@ app.register_blueprint(pending_users_bp)  # Pending users routes - has /api in b
 app.register_blueprint(payments_bp)  # Payment processing routes - has /api in blueprint
 app.register_blueprint(crypto_payments_bp)  # Crypto payment routes - has /api in blueprint
 app.register_blueprint(support_tickets_bp)  # Support ticket system - has /api in blueprint
+app.register_blueprint(admin_missing_bp)  # Missing admin routes
+app.register_blueprint(user_missing_bp)  # Missing user routes
 
 @app.route('/', defaults={'path': ''}) 
 @app.route('/<path:path>')
