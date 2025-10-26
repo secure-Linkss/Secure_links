@@ -71,6 +71,7 @@ import {
   PieChart as PieChartIcon,
   Link2,
   Ban,
+  Send,
 } from 'lucide-react';
 import {
   Table,
@@ -152,6 +153,11 @@ export default function AdminPanelComplete() {
   // Data state
   const [dashboardStats, setDashboardStats] = useState({
     totalUsers: 0,
+    activeUsers: 0,
+    pendingUsers: 0,
+    suspendedUsers: 0,
+    adminCount: 0,
+    totalUsers: 0,
     totalLinks: 0,
     totalClicks: 0,
     totalCampaigns: 0,
@@ -164,16 +170,23 @@ export default function AdminPanelComplete() {
   });
 
   const [users, setUsers] = useState([]);
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [suspendedUsers, setSuspendedUsers] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [securityThreats, setSecurityThreats] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [domains, setDomains] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
-  const [pendingUsers, setPendingUsers] = useState([]);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [telegramBots, setTelegramBots] = useState([]);
   const [cryptoPayments, setCryptoPayments] = useState([]);
+  const [telegramSettings, setTelegramSettings] = useState({
+    botToken: '',
+    chatId: '',
+    status: 'disconnected', // 'connected', 'disconnected', 'testing'
+  });
 
   // Dialog states
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
@@ -284,6 +297,63 @@ export default function AdminPanelComplete() {
       }
     } catch (error) {
       showError('Error loading users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPendingUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/users/pending', {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPendingUsers(Array.isArray(data) ? data : data.users || []);
+      } else {
+        showError('Failed to load pending users');
+      }
+    } catch (error) {
+      showError('Error loading pending users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSuspendedUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/users/suspended', {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSuspendedUsers(Array.isArray(data) ? data : data.users || []);
+      } else {
+        showError('Failed to load suspended users');
+      }
+    } catch (error) {
+      showError('Error loading suspended users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadActivityLogs = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/activity-logs', {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setActivityLogs(Array.isArray(data) ? data : data.logs || []);
+      } else {
+        showError('Failed to load activity logs');
+      }
+    } catch (error) {
+      showError('Error loading activity logs');
     } finally {
       setLoading(false);
     }
@@ -581,6 +651,87 @@ export default function AdminPanelComplete() {
     }
   };
 
+  const loadTelegramSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/settings/telegram', {
+        headers: getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTelegramSettings({
+          botToken: data.bot_token || '',
+          chatId: data.chat_id || '',
+          status: data.status || 'disconnected',
+        });
+      } else {
+        showError('Failed to load Telegram settings');
+      }
+    } catch (error) {
+      showError('Error loading Telegram settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveTelegramSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/settings/telegram', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ 
+          bot_token: telegramSettings.botToken,
+          chat_id: telegramSettings.chatId,
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTelegramSettings(prev => ({ ...prev, status: data.status || 'connected' }));
+        showSuccess('Telegram settings saved successfully');
+      } else {
+        const data = await response.json();
+        showError(data.error || 'Failed to save Telegram settings');
+      }
+    } catch (error) {
+      showError('Error saving Telegram settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testTelegramConnection = async () => {
+    try {
+      setLoading(true);
+      setTelegramSettings(prev => ({ ...prev, status: 'testing' }));
+      const response = await fetch('/api/admin/settings/telegram/test', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ 
+          bot_token: telegramSettings.botToken,
+          chat_id: telegramSettings.chatId,
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTelegramSettings(prev => ({ ...prev, status: data.status || 'connected' }));
+        showSuccess('Test message sent successfully! Status: ' + (data.status || 'connected'));
+      } else {
+        setTelegramSettings(prev => ({ ...prev, status: 'disconnected' }));
+        const data = await response.json();
+        showError(data.error || 'Test failed. Check your token and chat ID.');
+      }
+    } catch (error) {
+      setTelegramSettings(prev => ({ ...prev, status: 'disconnected' }));
+      showError('Error testing Telegram connection');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleCampaignExpansion = (campaignId) => {
     setExpandedCampaignId(expandedCampaignId === campaignId ? null : campaignId);
   };
@@ -637,26 +788,7 @@ export default function AdminPanelComplete() {
     }
   };
 
-  // Pending Users API functions
-  const loadPendingUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/pending-users', {
-        headers: getAuthHeaders()
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        setPendingUsers(data.pending_users || []);
-      } else {
-        showError('Failed to load pending users');
-      }
-    } catch (error) {
-      showError('Error loading pending users');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const approvePendingUser = async (userId) => {
     try {
@@ -824,14 +956,14 @@ export default function AdminPanelComplete() {
       case 'support':
         loadSupportTickets();
         break;
-      case 'audit':
+       case 'audit':
         loadAuditLogs();
         break;
       case 'settings':
         loadDomains();
+        loadTelegramSettings(); // Load Telegram settings on entering the settings tab
         break;
-      case 'pending':
-        loadPendingUsers();
+      default:
         break;
     }
   }, [activeTab]);
@@ -1264,273 +1396,253 @@ export default function AdminPanelComplete() {
             </Card>
           </TabsContent>
 
-          {/* Users Tab */}
+{/* Users Tab */}
           <TabsContent value="users" className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">User Management</h2>
-                <p className="text-slate-400 text-xs sm:text-sm">Manage system users and permissions</p>
-              </div>
-              
-              {/* User Management Actions */}
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Dialog open={showCreateUserDialog} onOpenChange={setShowCreateUserDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none text-xs sm:text-sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create User
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-slate-800 border-slate-700 w-[95vw] sm:w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Create New User</DialogTitle>
-                      <DialogDescription className="text-slate-400">
-                        Add a new user to the system with specified role and permissions.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-white text-sm">Username</Label>
-                        <Input
-                          value={newUser.username}
-                          onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                          placeholder="Enter username"
-                          className="bg-slate-700 border-slate-600 text-white mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm">Email</Label>
-                        <Input
-                          type="email"
-                          value={newUser.email}
-                          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                          placeholder="Enter email"
-                          className="bg-slate-700 border-slate-600 text-white mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm">Password</Label>
-                        <Input
-                          type="password"
-                          value={newUser.password}
-                          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                          placeholder="Enter password"
-                          className="bg-slate-700 border-slate-600 text-white mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm">Role</Label>
-                        <Select
-                          value={newUser.role}
-                          onValueChange={(value) => setNewUser({ ...newUser, role: value })}
-                        >
-                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-700 border-slate-600">
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="main_admin">Main Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm">Plan Type</Label>
-                        <Select
-                          value={newUser.plan_type}
-                          onValueChange={(value) => setNewUser({ ...newUser, plan_type: value })}
-                        >
-                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-700 border-slate-600">
-                            <SelectItem value="free">Free</SelectItem>
-                            <SelectItem value="pro">Pro</SelectItem>
-                            <SelectItem value="enterprise">Enterprise</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm">Status</Label>
-                        <Select
-                          value={newUser.status}
-                          onValueChange={(value) => setNewUser({ ...newUser, status: value })}
-                        >
-                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-700 border-slate-600">
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="suspended">Suspended</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="is_active"
-                          checked={newUser.is_active}
-                          onCheckedChange={(checked) => setNewUser({ ...newUser, is_active: checked })}
-                        />
-                        <Label htmlFor="is_active" className="text-white text-sm">Active Account</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="is_verified"
-                          checked={newUser.is_verified}
-                          onCheckedChange={(checked) => setNewUser({ ...newUser, is_verified: checked })}
-                        />
-                        <Label htmlFor="is_verified" className="text-white text-sm">Verified Email</Label>
-                      </div>
-                    </div>
-                    <DialogFooter className="flex gap-2 flex-col sm:flex-row">
-                      <Button 
-                        onClick={createUser} 
-                        className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none text-xs sm:text-sm"
-                        disabled={loading}
-                      >
-                        {loading ? 'Creating...' : 'Create User'}
-                      </Button>
-                      <Button
-                        onClick={() => setShowCreateUserDialog(false)}
-                        variant="outline"
-                        className="flex-1 sm:flex-none text-xs sm:text-sm"
-                      >
-                        Cancel
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
+            {/* User Management Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <StatCard icon={Users} label="Total Users" value={dashboardStats.totalUsers} color="bg-blue-500" />
+              <StatCard icon={UserCheck} label="Active Users" value={dashboardStats.activeUsers} color="bg-green-500" />
+              <StatCard icon={Clock} label="Pending Users" value={dashboardStats.pendingUsers} color="bg-yellow-500" />
+              <StatCard icon={UserX} label="Suspended Users" value={dashboardStats.suspendedUsers} color="bg-red-500" />
+              <StatCard icon={Key} label="Admin Count" value={dashboardStats.adminCount} color="bg-purple-500" />
             </div>
 
-            {/* Search and Filter */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-slate-800 border-slate-700 text-white pl-10"
-                />
-              </div>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="bg-slate-800 border-slate-700 text-white w-full sm:w-48">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Users Table */}
+            {/* Main Users Table */}
             <Card className="bg-slate-800 border-slate-700">
-              <CardContent className="p-0">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">All System Users</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[180px] bg-slate-900 border-slate-700 text-white"
+                  />
+                  <Button onClick={loadUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                    <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-slate-700 hover:bg-slate-700/50">
-                        <TableHead className="text-slate-300 text-xs sm:text-sm px-4 py-3">Username</TableHead>
-                        <TableHead className="text-slate-300 text-xs sm:text-sm px-4 py-3 hidden sm:table-cell">Email</TableHead>
-                        <TableHead className="text-slate-300 text-xs sm:text-sm px-4 py-3">Role</TableHead>
-                        <TableHead className="text-slate-300 text-xs sm:text-sm px-4 py-3">Status</TableHead>
-                        <TableHead className="text-slate-300 text-xs sm:text-sm px-4 py-3 hidden md:table-cell">Plan</TableHead>
-                        <TableHead className="text-slate-300 text-xs sm:text-sm px-4 py-3 text-right">Actions</TableHead>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Date Joined</TableHead>
+                        <TableHead>Subscription Plan</TableHead>
+                        <TableHead>Last Login</TableHead>
+                        <TableHead>Account Type</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead>Login Method</TableHead>
+                        <TableHead>Verification Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs sm:text-sm">
-                            {loading ? 'Loading users...' : 'No users found.'}
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.dateJoined || 'N/A'}</TableCell>
+                          <TableCell>{user.subscriptionPlan || 'Free'}</TableCell>
+                          <TableCell>{user.lastLogin || 'N/A'}</TableCell>
+                          <TableCell>
+                            <Badge
+                              className={`text-xs ${user.role === 'main_admin' ? 'bg-red-500' : user.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}
+                            >
+                              {user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{user.paymentStatus || 'N/A'}</TableCell>
+                          <TableCell>{user.loginMethod || 'Email/Pass'}</TableCell>
+                          <TableCell>{user.verificationStatus || 'Unverified'}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                                <DropdownMenuItem onClick={() => handleViewUser(user)} className="text-white hover:bg-slate-700/50">
+                                  <Eye className="h-4 w-4 mr-2" /> View Details
+                                </DropdownMenuItem>
+                                {isMainAdmin && (
+                                  <DropdownMenuItem onClick={() => handleEditUser(user)} className="text-white hover:bg-slate-700/50">
+                                    <Edit className="h-4 w-4 mr-2" /> Edit User
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator className="bg-slate-700" />
+                                {isMainAdmin && (
+                                  <DropdownMenuItem onClick={() => handleDeleteUser(user)} className="text-red-400 hover:bg-red-500/20">
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
-                      ) : (
-                        filteredUsers.map((user) => (
-                          <TableRow key={user.id} className="border-slate-700 hover:bg-slate-700/50">
-                            <TableCell className="text-white text-xs sm:text-sm font-medium px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-slate-400" />
-                                {user.username}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-slate-300 text-xs sm:text-sm px-4 py-3 hidden sm:table-cell">
-                              {user.email}
-                            </TableCell>
-                            <TableCell className="px-4 py-3">{getStatusBadge(user.role)}</TableCell>
-                            <TableCell className="px-4 py-3">{getStatusBadge(user.status || 'active')}</TableCell>
-                            <TableCell className="px-4 py-3 hidden md:table-cell">{getStatusBadge(user.plan_type || 'free')}</TableCell>
-                            <TableCell className="text-right px-4 py-3">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="bg-slate-800 border-slate-700" align="end">
-                                  <DropdownMenuItem 
-                                    className="text-slate-300 hover:bg-slate-700"
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setShowUserDetailsDialog(true);
-                                    }}
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-slate-300 hover:bg-slate-700"
-                                    onClick={() => {
-                                      setEditingUser(user);
-                                      setShowEditUserDialog(true);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit User
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-slate-300 hover:bg-slate-700"
-                                    onClick={() => resetUserPassword(user.id)}
-                                  >
-                                    <Key className="h-4 w-4 mr-2" />
-                                    Reset Password
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-slate-300 hover:bg-slate-700"
-                                    onClick={() => toggleUserStatus(user.id, user.status)}
-                                  >
-                                    {user.status === 'active' ? (
-                                      <>
-                                        <Ban className="h-4 w-4 mr-2" />
-                                        Suspend User
-                                      </>
-                                    ) : (
-                                      <>
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Activate User
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator className="bg-slate-700" />
-                                  <DropdownMenuItem 
-                                    className="text-red-400 hover:bg-red-500/20"
-                                    onClick={() => deleteUser(user.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete User
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pending Users Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">Pending Users (Verification/Payment)</CardTitle>
+                <Button onClick={loadPendingUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Date Joined</TableHead>
+                        <TableHead>Verification Status</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.dateJoined || 'N/A'}</TableCell>
+                          <TableCell>{user.verificationStatus || 'Unverified'}</TableCell>
+                          <TableCell>{user.paymentStatus || 'N/A'}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                                <DropdownMenuItem onClick={() => handleViewUser(user)} className="text-white hover:bg-slate-700/50">
+                                  <Eye className="h-4 w-4 mr-2" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleApproveUser(user)} className="text-green-400 hover:bg-green-500/20">
+                                  <UserCheck className="h-4 w-4 mr-2" /> Approve User
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSuspendUser(user)} className="text-red-400 hover:bg-red-500/20">
+                                  <UserX className="h-4 w-4 mr-2" /> Suspend User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Suspended/Disabled Accounts Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">Suspended / Disabled Accounts</CardTitle>
+                <Button onClick={loadSuspendedUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Suspension Date</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Account Type</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {suspendedUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.suspensionDate || 'N/A'}</TableCell>
+                          <TableCell>{user.reason || 'N/A'}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                                <DropdownMenuItem onClick={() => handleViewUser(user)} className="text-white hover:bg-slate-700/50">
+                                  <Eye className="h-4 w-4 mr-2" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUnsuspendUser(user)} className="text-green-400 hover:bg-green-500/20">
+                                  <Unlock className="h-4 w-4 mr-2" /> Unsuspend
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activity Logs Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">User Activity Logs</CardTitle>
+                <Button onClick={loadActivityLogs} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Resource ID</TableHead>
+                        <TableHead>IP Address</TableHead>
+                        <TableHead>Location</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activityLogs.map((log) => (
+                        <TableRow key={log.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{log.timestamp}</TableCell>
+                          <TableCell>{log.userId}</TableCell>
+                          <TableCell>{log.action}</TableCell>
+                          <TableCell>{log.resourceId || 'N/A'}</TableCell>
+                          <TableCell>{log.ipAddress || 'N/A'}</TableCell>
+                          <TableCell>{log.location || 'N/A'}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -1538,11 +1650,256 @@ export default function AdminPanelComplete() {
             </Card>
           </TabsContent>
 
-          {/* Campaigns Tab */}
+          {<TabsContent value="users" className="space-y-6">
+            {/* User Management Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <StatCard icon={Users} label="Total Users" value={dashboardStats.totalUsers} color="bg-blue-500" />
+              <StatCard icon={UserCheck} label="Active Users" value={dashboardStats.activeUsers} color="bg-green-500" />
+              <StatCard icon={Clock} label="Pending Users" value={dashboardStats.pendingUsers} color="bg-yellow-500" />
+              <StatCard icon={UserX} label="Suspended Users" value={dashboardStats.suspendedUsers} color="bg-red-500" />
+              <StatCard icon={Key} label="Admin Count" value={dashboardStats.adminCount} color="bg-purple-500" />
+            </div>
+
+            {/* Main Users Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">All System Users</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-[180px] bg-slate-900 border-slate-700 text-white"
+                  />
+                  <Button onClick={loadUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                    <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Date Joined</TableHead>
+                        <TableHead>Subscription Plan</TableHead>
+                        <TableHead>Last Login</TableHead>
+                        <TableHead>Account Type</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead>Login Method</TableHead>
+                        <TableHead>Verification Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.dateJoined || 'N/A'}</TableCell>
+                          <TableCell>{user.subscriptionPlan || 'Free'}</TableCell>
+                          <TableCell>{user.lastLogin || 'N/A'}</TableCell>
+                          <TableCell>
+                            <Badge
+                              className={`text-xs ${user.role === 'main_admin' ? 'bg-red-500' : user.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}
+                            >
+                              {user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{user.paymentStatus || 'N/A'}</TableCell>
+                          <TableCell>{user.loginMethod || 'Email/Pass'}</TableCell>
+                          <TableCell>{user.verificationStatus || 'Unverified'}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                                <DropdownMenuItem onClick={() => handleViewUser(user)} className="text-white hover:bg-slate-700/50">
+                                  <Eye className="h-4 w-4 mr-2" /> View Details
+                                </DropdownMenuItem>
+                                {isMainAdmin && (
+                                  <DropdownMenuItem onClick={() => handleEditUser(user)} className="text-white hover:bg-slate-700/50">
+                                    <Edit className="h-4 w-4 mr-2" /> Edit User
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator className="bg-slate-700" />
+                                {isMainAdmin && (
+                                  <DropdownMenuItem onClick={() => handleDeleteUser(user)} className="text-red-400 hover:bg-red-500/20">
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pending Users Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">Pending Users (Verification/Payment)</CardTitle>
+                <Button onClick={loadPendingUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Date Joined</TableHead>
+                        <TableHead>Verification Status</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.dateJoined || 'N/A'}</TableCell>
+                          <TableCell>{user.verificationStatus || 'Unverified'}</TableCell>
+                          <TableCell>{user.paymentStatus || 'N/A'}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                                <DropdownMenuItem onClick={() => handleViewUser(user)} className="text-white hover:bg-slate-700/50">
+                                  <Eye className="h-4 w-4 mr-2" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleApproveUser(user)} className="text-green-400 hover:bg-green-500/20">
+                                  <UserCheck className="h-4 w-4 mr-2" /> Approve User
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSuspendUser(user)} className="text-red-400 hover:bg-red-500/20">
+                                  <UserX className="h-4 w-4 mr-2" /> Suspend User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Suspended/Disabled Accounts Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">Suspended / Disabled Accounts</CardTitle>
+                <Button onClick={loadSuspendedUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Suspension Date</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Account Type</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {suspendedUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.suspensionDate || 'N/A'}</TableCell>
+                          <TableCell>{user.reason || 'N/A'}</TableCell>
+                          <TableCell>{user.role}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activity Logs Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">User Activity Logs</CardTitle>
+                <Button onClick={loadActivityLogs} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Resource ID</TableHead>
+                        <TableHead>IP Address</TableHead>
+                        <TableHead>Location</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activityLogs.map((log) => (
+                        <TableRow key={log.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{log.timestamp}</TableCell>
+                          <TableCell>{log.userId}</TableCell>
+                          <TableCell>{log.action}</TableCell>
+                          <TableCell>{log.resourceId || 'N/A'}</TableCell>
+                          <TableCell>{log.ipAddress || 'N/A'}</TableCell>
+                          <TableCell>{log.location || 'N/A'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
           <TabsContent value="campaigns" className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">Campaign Management</h2>
+              <div>          <h2 className="text-xl sm:text-2xl font-bold">Campaign Management</h2>
                 <p className="text-slate-400 text-xs sm:text-sm">View and manage all campaigns</p>
               </div>
               <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto text-xs sm:text-sm">
@@ -2426,6 +2783,72 @@ export default function AdminPanelComplete() {
                   </CardContent>
                 </Card>
 
+                {/* Telegram Integration */}
+                <Card className="bg-slate-800 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white text-base sm:text-lg flex items-center gap-2">
+                      <Send className="h-5 w-5" />
+                      Telegram Notifications
+                    </CardTitle>
+                    <CardDescription className="text-slate-400 text-xs sm:text-sm">
+                      Configure Telegram for system alerts and notifications.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="telegram_bot_token" className="text-white text-sm">Bot Token</Label>
+                      <Input
+                        id="telegram_bot_token"
+                        type="password"
+                        value={telegramSettings.botToken}
+                        onChange={(e) => setTelegramSettings({ ...telegramSettings, botToken: e.target.value })}
+                        placeholder="Enter your Telegram Bot Token"
+                        className="bg-slate-700 border-slate-600 text-white text-xs sm:text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telegram_chat_id" className="text-white text-sm">Admin Chat ID</Label>
+                      <Input
+                        id="telegram_chat_id"
+                        value={telegramSettings.chatId}
+                        onChange={(e) => setTelegramSettings({ ...telegramSettings, chatId: e.target.value })}
+                        placeholder="Enter your Admin Chat ID"
+                        className="bg-slate-700 border-slate-600 text-white text-xs sm:text-sm"
+                      />
+                      <p className="text-slate-500 text-xs">
+                        This is the chat ID where system notifications will be sent.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-xs sm:text-sm">Status:</span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${telegramSettings.status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span className={`text-xs ${telegramSettings.status === 'connected' ? 'text-green-400' : 'text-red-400'}`}>
+                          {telegramSettings.status === 'connected' ? 'Connected' : 'Disconnected'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={testTelegramConnection} 
+                        className="bg-blue-600 hover:bg-blue-700 flex-1 text-xs sm:text-sm"
+                        disabled={loading}
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Test Connection
+                      </Button>
+                      <Button 
+                        onClick={saveTelegramSettings} 
+                        className="bg-green-600 hover:bg-green-700 flex-1 text-xs sm:text-sm"
+                        disabled={loading}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Settings
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card className="bg-slate-800 border-slate-700">
                   <CardHeader>
                     <CardTitle className="text-white text-base sm:text-lg flex items-center gap-2">
@@ -2763,8 +3186,7 @@ export default function AdminPanelComplete() {
                   )}
                 </CardContent>
               </Card>
-            </TabsContent>
-          )}
+</TabsContent>
         </Tabs>
       </div>
 
@@ -2845,3 +3267,180 @@ export default function AdminPanelComplete() {
     </div>
   );
 }
+                                <DropdownMenuSeparator className="bg-slate-700" />
+                                {isMainAdmin && (
+                                  <DropdownMenuItem onClick={() => handleDeleteUser(user)} className="text-red-400 hover:bg-red-500/20">
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pending Users Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">Pending Users (Verification/Payment)</CardTitle>
+                <Button onClick={loadPendingUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Date Joined</TableHead>
+                        <TableHead>Verification Status</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.dateJoined || 'N/A'}</TableCell>
+                          <TableCell>{user.verificationStatus || 'Unverified'}</TableCell>
+                          <TableCell>{user.paymentStatus || 'N/A'}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                                <DropdownMenuItem onClick={() => handleViewUser(user)} className="text-white hover:bg-slate-700/50">
+                                  <Eye className="h-4 w-4 mr-2" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleApproveUser(user)} className="text-green-400 hover:bg-green-500/20">
+                                  <UserCheck className="h-4 w-4 mr-2" /> Approve User
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSuspendUser(user)} className="text-red-400 hover:bg-red-500/20">
+                                  <UserX className="h-4 w-4 mr-2" /> Suspend User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Suspended/Disabled Accounts Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">Suspended / Disabled Accounts</CardTitle>
+                <Button onClick={loadSuspendedUsers} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Suspension Date</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Account Type</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {suspendedUsers.map((user) => (
+                        <TableRow key={user.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{user.id}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email || 'N/A'}</TableCell>
+                          <TableCell>{user.suspensionDate || 'N/A'}</TableCell>
+                          <TableCell>{user.reason || 'N/A'}</TableCell>
+                          <TableCell>{user.role}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
+                                <DropdownMenuItem onClick={() => handleViewUser(user)} className="text-white hover:bg-slate-700/50">
+                                  <Eye className="h-4 w-4 mr-2" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUnsuspendUser(user)} className="text-green-400 hover:bg-green-500/20">
+                                  <Unlock className="h-4 w-4 mr-2" /> Unsuspend
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activity Logs Table */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl font-semibold">User Activity Logs</CardTitle>
+                <Button onClick={loadActivityLogs} size="sm" variant="outline" className="text-xs bg-slate-900 border-slate-700 hover:bg-slate-700">
+                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs text-slate-400">
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Resource ID</TableHead>
+                        <TableHead>IP Address</TableHead>
+                        <TableHead>Location</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activityLogs.map((log) => (
+                        <TableRow key={log.id} className="text-sm border-slate-700 hover:bg-slate-700/50">
+                          <TableCell>{log.timestamp}</TableCell>
+                          <TableCell>{log.userId}</TableCell>
+                          <TableCell>{log.action}</TableCell>
+                          <TableCell>{log.resourceId || 'N/A'}</TableCell>
+                          <TableCell>{log.ipAddress || 'N/A'}</TableCell>
+                          <TableCell>{log.location || 'N/A'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+
+
+

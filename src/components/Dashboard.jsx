@@ -223,15 +223,15 @@ const Dashboard = () => {
       </div>
 
       {/* Compact Metric Cards Grid - Perfect 8-Grid Layout */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
-        <Card className="hover:shadow-md transition-all cursor-pointer bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 mb-8">
+        <Card className="hover:shadow-lg transition-all cursor-pointer bg-card/50 border-border/50">
           <CardContent className="p-6">
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-slate-400 mb-1">Total Links</p>
                 <Link className="h-4 w-4 text-blue-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{stats.totalLinks || 6}</p>
+              <p className="text-2xl font-bold text-white">{stats.totalLinks}</p>
             </div>
           </CardContent>
         </Card>
@@ -243,7 +243,7 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-slate-400 mb-1">Total Clicks</p>
                 <MousePointer className="h-4 w-4 text-green-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{stats.totalClicks || 4}</p>
+              <p className="text-2xl font-bold text-white">{stats.totalClicks}</p>
             </div>
           </CardContent>
         </Card>
@@ -255,8 +255,7 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-slate-400 mb-1">Real Visitors</p>
                 <Eye className="h-4 w-4 text-purple-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{additionalStats.realVisitors}</p>
-            </div>
+              <p className="text-2xl font-bold text-white">{additionalStats.realVisitors}</p>        </div>
           </CardContent>
         </Card>
 
@@ -267,8 +266,7 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-slate-400 mb-1">Captured Emails</p>
                 <Mail className="h-4 w-4 text-orange-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{additionalStats.capturedEmails}</p>
-            </div>
+             <p className="text-2xl font-bold text-white">{additionalStats.capturedEmails}</p>         </div>
           </CardContent>
         </Card>
 
@@ -279,8 +277,7 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-slate-400 mb-1">Active Links</p>
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{additionalStats.activeLinks}</p>
-            </div>
+             <p className="text-2xl font-bold text-white">{additionalStats.activeLinks}</p>         </div>
           </CardContent>
         </Card>
 
@@ -291,8 +288,7 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-slate-400 mb-1">Conversion Rate</p>
                 <BarChartIcon className="h-4 w-4 text-yellow-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{additionalStats.conversionRate}%</p>
-            </div>
+           <p className="text-2xl font-bold text-white">{additionalStats.conversionRate}%</p>           </div>
           </CardContent>
         </Card>
 
@@ -315,7 +311,7 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-slate-400 mb-1">Countries</p>
                 <Globe className="h-4 w-4 text-cyan-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{additionalStats.countries}</p>
+              <p className="text-2xl font-bold text-white">{additionalStats.countries}</p>
             </div>
           </CardContent>
         </Card>
@@ -327,14 +323,14 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-slate-400 mb-1">Total Campaigns</p>
                 <BarChartIcon className="h-4 w-4 text-red-500" />
               </div>
-              <p className="text-3xl font-bold text-white">{stats.totalLinks || 6}</p>
+              <p className="text-2xl font-bold text-white">{stats.totalLinks}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts Grid - Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Performance Over Time Chart */}
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
@@ -475,7 +471,7 @@ const Dashboard = () => {
       </div>
 
       {/* Bottom Three Large Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Top Countries Card */}
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">

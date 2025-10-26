@@ -8,3 +8,14 @@ __pycache__/
 *.pyc
 .DS_Store
 src/database/app.db
+
+
+# Additional exclusions
+venv/
+/dist
+/build
+/coverage
+.vscode
+.idea
+*.sqlite3
+
