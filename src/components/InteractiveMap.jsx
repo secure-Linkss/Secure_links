@@ -11,8 +11,8 @@ L.Icon.Default.mergeOptions({
 })
 
 const InteractiveMap = ({ geoData }) => {
-  const mapRef = useRef(null)
-  const mapInstanceRef = useRef(null)
+  const mapRef = useRef([])
+  const mapInstanceRef = useRef([])
 
   useEffect(() => {
     if (!mapRef.current) return
@@ -132,7 +132,7 @@ const InteractiveMap = ({ geoData }) => {
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
-        mapInstanceRef.current = null
+        mapInstanceRef.current = []
       }
     }
   }, [geoData])

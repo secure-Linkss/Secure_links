@@ -1,68 +1,44 @@
 {
   "version": 2,
-  "buildCommand": "npm install --legacy-peer-deps && npm run build",
-  "outputDirectory": "dist",
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.9"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/s/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/p/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/pixel/(.*)",
-      "dest": "api/index.py"
+      "dest": "/api/index.py"
     },
     {
       "src": "/t/(.*)",
-      "dest": "api/index.py"
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/p/(.*)",
+      "dest": "/api/index.py"
     },
     {
       "src": "/q/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/validate",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/route",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/track/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "dist/assets/$1"
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
-      "dest": "dist/$1"
+      "dest": "/api/index.py"
     },
     {
       "src": "/(.*)",
-      "dest": "dist/index.html"
+      "dest": "/index.html"
     }
-  ]
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    }
+  ],
+  "env": {
+    "SECRET_KEY": "@secret_key",
+    "DATABASE_URL": "@database_url",
+    "SHORTIO_API_KEY": "@shortio_api_key",
+    "SHORTIO_DOMAIN": "@shortio_domain",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key",
+    "STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key"
+  }
 }

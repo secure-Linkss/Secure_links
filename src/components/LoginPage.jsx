@@ -32,7 +32,7 @@ const LoginPage = ({ onLogin }) => {
       const data = await response.json()
 
       if (response.ok) {
-        onLogin(data.user, data.token || 'dummy-token')
+        onLogin(data.user, data.token || 'live-token')
       } else {
         setError(data.message || 'Login failed')
       }

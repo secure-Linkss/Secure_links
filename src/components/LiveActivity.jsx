@@ -76,13 +76,13 @@ const LiveActivity = () => {
         setLastUpdated(new Date())
       } else {
         console.error('Failed to fetch events')
-        // Fallback to empty array instead of mock data
+        // Fallback to empty array instead of live data
         setEvents([])
         setLastUpdated(new Date())
       }
     } catch (error) {
       console.error('Error fetching events:', error)
-      // Fallback to empty array instead of mock data
+      // Fallback to empty array instead of live data
       setEvents([])
       setLastUpdated(new Date())
     } finally {
